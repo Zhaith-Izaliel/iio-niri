@@ -1,0 +1,8 @@
+[package]
+name = "rust-bootstrapper" # BOOTSTRAPPER: Change this for the name of your package
+version = "0.1.0"         # BOOTSTRAPPER: Change this for the version of your package
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
