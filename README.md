@@ -272,7 +272,7 @@ Project Link: [https://github.com/Zhaith-Izaliel/iio-niri](https://github.com/Zh
 [issues-shield]: https://img.shields.io/github/issues/Zhaith-Izaliel/iio-niri.svg?style=for-the-badge
 [issues-url]: https://github.com/Zhaith-Izaliel/iio-niri/issues
 [license-shield]: https://img.shields.io/github/license/Zhaith-Izaliel/iio-niri.svg?style=for-the-badge
-[license-url]: https://github.com/Zhaith-Izaliel/iio-niri/blob/master/LICENSE.txt
+[license-url]: https://github.com/Zhaith-Izaliel/iio-niri/blob/master/LICENSE.md
 
 [Rust]: https://img.shields.io/badge/Rust-B7400F?style=for-the-badge&logo=rust&logoColor=white
 [Rust-url]: https://www.rust-lang.org/
