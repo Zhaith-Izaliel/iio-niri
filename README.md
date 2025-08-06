@@ -102,10 +102,10 @@ To get a local copy up and running follow these simple example steps.
 ### Prerequisites
 
 IIO-Niri requires the Rust Compiler if you plan to compile it, you will also need Cargo to build the project and DBus dependencies.
-* `rustc` >= 1.86.0
-* `cargo` >= 1.86.0
-* `pkg-config` >= 0.29.2
-* `libdbus` >= 1.6
+* `rustc` ⩾ 1.86.0
+* `cargo` ⩾ 1.86.0
+* `pkg-config` ⩾ 0.29.2
+* `libdbus` ⩾ 1.6
 
 At runtime, the program relies on [IIO-Sensor-Proxy](https://gitlab.freedesktop.org/hadess/iio-sensor-proxy/) to fetch updates on the accelerometer. Make sure it is running alongside IIO-Niri.
 
