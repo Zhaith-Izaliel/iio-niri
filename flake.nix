@@ -36,10 +36,9 @@
           imports = [module];
         };
 
-        overlays.default = {pkgs, ...}: let
-          packages = withSystem pkgs.stdenv.hostPlatform.system ({config, ...}: config.packages);
-        in
-          final: prev: {iio-niri = packages.default;};
+        overlays.default = final: prev: let
+          packages = withSystem prev.stdenv.hostPlatform.system ({config, ...}: config.packages);
+        in {iio-niri = packages.default;};
       };
     });
 }
