@@ -11,3 +11,4 @@ clap = "4.5.42"
 clap_derive = "4.5.41"
 dbus = "0.9.7"
 niri-ipc = { version = "25.5.1", features = ["clap"] }
+signal-hook = "0.3.18"

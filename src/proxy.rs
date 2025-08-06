@@ -1,7 +1,13 @@
 use anyhow::{anyhow, Result};
 use dbus::blocking::{stdintf::org_freedesktop_dbus::Properties, Connection, Proxy};
 use niri_ipc::socket::Socket;
-use std::time::Duration;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use crate::monitor::update_orientation;
 
@@ -26,13 +32,20 @@ pub fn listen_orientation(
 
     claim_accelerometer(interface, &proxy)?;
 
-    loop {
+    let term = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&term))?;
+
+    while !term.load(Ordering::Relaxed) {
         let found_signal = conn.process(Duration::from_millis(timeout))?;
         if found_signal {
             let orientation = get_orientation(interface, &proxy)?;
             update_orientation(socket, monitor.to_owned(), orientation.as_str())?;
         }
     }
+
+    release_accelerometer(interface, &proxy)?;
+
+    Ok(())
 }
 
 fn claim_accelerometer(interface: &str, proxy: &Proxy<'_, &Connection>) -> Result<()> {
@@ -41,6 +54,18 @@ fn claim_accelerometer(interface: &str, proxy: &Proxy<'_, &Connection>) -> Resul
     match result {
         Ok(_) => Ok(()),
         Err(err) => Err(anyhow!(format!("Couldn't claim accelerometer:\n {}", err))),
+    }
+}
+
+fn release_accelerometer(interface: &str, proxy: &Proxy<'_, &Connection>) -> Result<()> {
+    let result: Result<(), dbus::Error> = proxy.method_call(interface, "ReleaseAccelerometer", ());
+
+    match result {
+        Ok(_) => Ok(()),
+        Err(err) => Err(anyhow!(format!(
+            "Couldn't release accelerometer:\n {}",
+            err
+        ))),
     }
 }
 
