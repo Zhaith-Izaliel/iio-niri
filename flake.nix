@@ -18,6 +18,8 @@
               rustc
               cargo
               rust-analyzer
+              dbus
+              pkg-config
             ];
           };
         };
