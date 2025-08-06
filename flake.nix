@@ -30,7 +30,11 @@
       };
 
       flake = {
-        nixosModules.default = {pkgs, ...}: import ./nix/module.nix {iio-niri = withSystem pkgs.stdenv.hostPlatform.system ({config, ...}: config.packages.default);};
+        nixosModules.default = {pkgs, ...}: let
+          module = import ./nix/module.nix {iio-niri = withSystem pkgs.stdenv.hostPlatform.system ({config, ...}: config.packages.default);};
+        in {
+          imports = [module];
+        };
 
         overlays.default = {pkgs, ...}: let
           packages = withSystem pkgs.stdenv.hostPlatform.system ({config, ...}: config.packages);
