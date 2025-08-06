@@ -92,9 +92,6 @@ Listen to IIO-Sensor-Proxy and updates Niri output orientation depending on the 
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
 ### Prerequisites
 
 IIO-Niri requires the Rust Compiler if you plan to compile it, you will also need Cargo to build the project and DBus dependencies.
