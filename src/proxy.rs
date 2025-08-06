@@ -54,22 +54,17 @@ fn claim_accelerometer(interface: &str, proxy: &Proxy<'_, &Connection>) -> Resul
 
     match result {
         Ok(_) => Ok(()),
-        Err(err) => {
-            println!("{}", err);
-            Err(anyhow!("Couldn't claim accelerometer."))
-        }
+        Err(err) => Err(anyhow!(format!("Couldn't claim accelerometer:\n {}", err))),
     }
 }
 
 fn has_accelerometer(interface: &str, proxy: &Proxy<'_, &Connection>) -> Result<bool> {
     match proxy.get(interface, "HasAccelerometer") {
         Ok(it) => Ok(it),
-        Err(err) => {
-            println!("{}", err);
-            Err(anyhow!(
-                "Couldn't find if there is an accelerometer or not."
-            ))
-        }
+        Err(err) => Err(anyhow!(format!(
+            "Couldn't find the accelerometer on the current hardware:\n {}",
+            err
+        ))),
     }
 }
 
