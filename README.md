@@ -33,7 +33,7 @@
   <p align="center">
   Listen to iio-sensor-proxy and updates Niri output orientation depending on the accelerometer orientation.
     <br />
-    <a href="https://github.com/Zhaith-Izaliel/iio-niri"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/Zhaith-Izaliel/iio-niri?tab=readme-ov-file#usage"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     <a href="https://github.com/Zhaith-Izaliel/iio-niri/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
