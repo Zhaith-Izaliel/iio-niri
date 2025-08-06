@@ -7,8 +7,8 @@
     inherit (cargoToml.package) name version;
     cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
   in
-    flake-parts.lib.mkFlake {inherit inputs;} ({...}: {
-      systems = ["x86_64-linux" "aarch64-darwin" "x86_64-darwin"];
+    flake-parts.lib.mkFlake {inherit inputs;} ({withSystem, ...}: {
+      systems = ["x86_64-linux" "aarch64-linux"];
 
       perSystem = {pkgs, ...}: {
         devShells = {
@@ -30,10 +30,12 @@
       };
 
       flake = {
-        templates.default = {
-          description = "A Rust bootstrapper for any small rust projects.";
-          path = ./.;
-        };
+        nixosModules.default = {pkgs, ...}: import ./nix/module.nix {iio-niri = withSystem pkgs.stdenv.hostPlatform.system ({config, ...}: config.packages.default);};
+
+        overlays.default = {pkgs, ...}: let
+          packages = withSystem pkgs.stdenv.hostPlatform.system ({config, ...}: config.packages);
+        in
+          final: prev: {iio-niri = packages.default;};
       };
     });
 }
