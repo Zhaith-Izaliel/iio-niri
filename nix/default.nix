@@ -19,4 +19,13 @@ rustPlatform.buildRustPackage {
 
   cargoLock.lockFile = ../Cargo.lock;
   src = lib.cleanSource ../.;
+
+  meta = with lib; {
+    description = "Listen to iio-sensor-proxy and updates Niri output orientation depending on the accelerometer orientation.";
+    homepage = "https://github.com/Zhaith/iio-niri";
+    license = licenses.mit;
+    maintainers = with maintainers; [];
+    mainProgram = name;
+    platforms = platforms.all;
+  };
 }
