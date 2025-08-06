@@ -28,14 +28,10 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/Zhaith-Izaliel/iio-niri">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a>
-
 <h3 align="center">IIO-Niri</h3>
 
   <p align="center">
-    project_description
+  Listen to iio-sensor-proxy and updates Niri output orientation depending on the accelerometer orientation.
     <br />
     <a href="https://github.com/Zhaith-Izaliel/iio-niri"><strong>Explore the docs »</strong></a>
     <br />
