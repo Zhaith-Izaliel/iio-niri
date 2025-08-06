@@ -152,7 +152,7 @@ Usage: iio-niri [OPTIONS]
 Options:
   -m, --monitor <MONITOR>          The monitor to rotate depending on the accelerometer orientation. Defaults to the first monitor Niri can see
   -t, --timeout <TIMEOUT>          The number of milliseconds before timeout for a dbus request [default: 5000]
-  -n, --niri-socket <NIRI_SOCKET>  The path to the niri IPC socket
+  -n, --niri-socket <NIRI_SOCKET>  The path to the niri IPC socket. Can be omitted
   -h, --help                       Print help
   -V, --version                    Print version
 ```
