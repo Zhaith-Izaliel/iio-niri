@@ -1,7 +1,7 @@
-use anyhow::{anyhow, Result};
-use niri_ipc::{socket::Socket, OutputAction, Request, Response, Transform};
+use std::collections::HashMap;
 
-use crate::app;
+use anyhow::{anyhow, Result};
+use niri_ipc::{socket::Socket, Output, OutputAction, Request, Response, Transform};
 
 fn parse_orientation(orientation: &str) -> Transform {
     match orientation {
@@ -13,23 +13,20 @@ fn parse_orientation(orientation: &str) -> Transform {
     }
 }
 
-pub fn update_orientation(orientation: &str, config: app::App) -> Result<()> {
-    let mut socket = match config.niri_socket {
-        Some(path) => Socket::connect_to(path)?,
-        None => Socket::connect()?,
-    };
-
-    let orientation = parse_orientation(orientation);
-
-    let outputs = match socket.send(Request::Outputs)? {
+fn get_outputs(socket: &mut Socket) -> Result<HashMap<String, Output>> {
+    match socket.send(Request::Outputs)? {
         Ok(it) => match it {
-            Response::Outputs(outputs) => outputs,
-            _ => return Err(anyhow!("Couldn't get the outputs list from Niri.")),
+            Response::Outputs(outputs) => Ok(outputs),
+            _ => Err(anyhow!("Couldn't get the outputs list from Niri.")),
         },
-        Err(e) => return Err(anyhow!(e)),
-    };
+        Err(e) => Err(anyhow!(e)),
+    }
+}
 
-    let monitor = match config.monitor {
+pub fn get_monitor(socket: &mut Socket, config_monitor: Option<String>) -> Result<String> {
+    let outputs = get_outputs(socket)?;
+
+    match config_monitor {
         Some(mon) => {
             if !outputs.keys().any(|key| *key == mon) {
                 return Err(anyhow!(format!(
@@ -37,13 +34,19 @@ pub fn update_orientation(orientation: &str, config: app::App) -> Result<()> {
                     mon
                 )));
             }
-            mon
+            Ok(mon)
         }
         None => match outputs.keys().next() {
-            Some(str) => str.to_owned(),
-            None => return Err(anyhow!("Couldn't select the monitor to rotate.")),
+            Some(str) => Ok(str.to_owned()),
+            None => Err(anyhow!("Couldn't select the monitor to rotate.")),
         },
-    };
+    }
+}
+
+pub fn update_orientation(socket: &mut Socket, monitor: String, orientation: &str) -> Result<()> {
+    let orientation = parse_orientation(orientation);
+
+    let outputs = get_outputs(socket)?;
 
     let old_orientation = match outputs.get(&monitor) {
         Some(output) => {

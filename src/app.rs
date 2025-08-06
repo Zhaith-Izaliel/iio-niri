@@ -12,7 +12,7 @@ pub struct App {
     #[arg(short, long, default_value_t = 5000)]
     pub timeout: u64,
 
-    /// The path to the niri IPC socket.
+    /// The path to the niri IPC socket. Can be omitted.
     #[arg(short, long)]
     pub niri_socket: Option<String>,
 }
