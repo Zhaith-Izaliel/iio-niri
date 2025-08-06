@@ -6,7 +6,7 @@ use crate::app;
 fn parse_orientation(orientation: &str) -> Transform {
     match orientation {
         "normal" => Transform::Normal,
-        "bottom-up" => Transform::Flipped,
+        "bottom-up" => Transform::_180,
         "right-up" => Transform::_270,
         "left-up" => Transform::_90,
         _ => Transform::Normal,
