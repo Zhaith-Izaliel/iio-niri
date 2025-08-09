@@ -300,4 +300,4 @@ Project Link: [https://github.com/Zhaith-Izaliel/iio-niri](https://github.com/Zh
 [Nix-url]: https://nixos.org/
 
 [IIO-Sensor-Proxy-Url]: https://gitlab.freedesktop.org/hadess/iio-sensor-proxy/
-[module-doc]: https://github.com/Zhaith-Izaliel/iio-niri
+[module-doc]: https://github.com/Zhaith-Izaliel/iio-niri/blob/master/module-doc.md
