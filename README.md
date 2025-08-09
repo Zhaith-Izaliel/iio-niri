@@ -100,7 +100,7 @@ IIO-Niri requires the Rust Compiler if you plan to compile it, you will also nee
 * `pkg-config` ⩾ 0.29.2
 * `libdbus` ⩾ 1.6
 
-At runtime, the program relies on [IIO-Sensor-Proxy](https://gitlab.freedesktop.org/hadess/iio-sensor-proxy/) to fetch updates on the accelerometer. Make sure it is running alongside IIO-Niri.
+At runtime, the program relies on [IIO-Sensor-Proxy][IIO-Sensor-Proxy-Url] to fetch updates on the accelerometer. Make sure it is running alongside IIO-Niri.
 
 If you intend to work with Nix:
 
@@ -154,7 +154,7 @@ Options:
   -V, --version                    Print version
 ```
 
-At runtime, the program relies on [IIO-Sensor-Proxy](https://gitlab.freedesktop.org/hadess/iio-sensor-proxy/) to fetch updates on the accelerometer. Make sure it is running alongside IIO-Niri.
+At runtime, the program relies on [IIO-Sensor-Proxy][IIO-Sensor-Proxy-Url] to fetch updates on the accelerometer. Make sure it is running alongside IIO-Niri.
 
 ### With NixOS
 
@@ -198,6 +198,27 @@ Then enable the module and start IIO-Niri in your Niri configuration.
 ```kdl
 spawn-at-startup "iio-niri" "--monitor" "eDP-1"
 ```
+
+Alternatively, you can start IIO-Niri with its own Systemd **user** unit:
+
+```nix
+{...}: {
+  programs.iio-niri = {
+    enable = true;
+
+    service = {
+      enable = true;
+
+      extraArgs = [
+        "--monitor"
+        "eDP-1"
+      ];
+    };
+  };
+}
+```
+
+See [the module documentation][module-doc] for more info.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -254,7 +275,7 @@ Project Link: [https://github.com/Zhaith-Izaliel/iio-niri](https://github.com/Zh
 
 * [Best-README-Template](https://github.com/othneildrew/Best-README-Template) for this README
 * [IIO-Hyprland](https://github.com/JeanSchoeller/iio-hyprland) for the know how on handling DBus requests and signals for IIO-Sensor-Proxy
-* [IIO-Sensor-Proxy](https://gitlab.freedesktop.org/hadess/iio-sensor-proxy/) for the proxy to handle accelerometer requests for this program
+* [IIO-Sensor-Proxy][IIO-Sensor-Proxy-Url] for the proxy to handle accelerometer requests for this program
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -277,3 +298,6 @@ Project Link: [https://github.com/Zhaith-Izaliel/iio-niri](https://github.com/Zh
 [Rust-url]: https://www.rust-lang.org/
 [Nix]: https://img.shields.io/badge/nix-0B1120?style=for-the-badge&logo=nixos
 [Nix-url]: https://nixos.org/
+
+[IIO-Sensor-Proxy-Url]: https://gitlab.freedesktop.org/hadess/iio-sensor-proxy/
+[module-doc]: https://github.com/Zhaith-Izaliel/iio-niri

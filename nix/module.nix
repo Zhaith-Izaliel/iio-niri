@@ -18,10 +18,10 @@ in {
     service = {
       enable = mkEnableOption "the systemd user service to run IIO-Niri";
 
-      niriService = mkOption {
+      niriUnit = mkOption {
         type = types.nonEmptyStr;
         default = "niri.service";
-        description = "The Niri service to bind the systemd service of IIO-Niri to.";
+        description = "The Niri **user** service unit to bind IIO-Niri's **user** service unit to.";
       };
 
       extraArgs = mkOption {
@@ -39,10 +39,10 @@ in {
 
     systemd.user.services.iio-niri = mkIf cfg.service.enable {
       description = "IIO-Niri";
-      wantedBy = [cfg.service.niriService];
-      bindsTo = [cfg.service.niriService];
-      partOf = [cfg.service.niriService];
-      after = [cfg.service.niriService];
+      wantedBy = [cfg.service.niriUnit];
+      bindsTo = [cfg.service.niriUnit];
+      partOf = [cfg.service.niriUnit];
+      after = [cfg.service.niriUnit];
       serviceConfig = {
         Type = "simple";
         ExecStart = "${getExe cfg.package} ${concatStringsSep " " cfg.service.extraArgs}";
