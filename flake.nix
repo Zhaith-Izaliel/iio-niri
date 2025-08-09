@@ -24,8 +24,10 @@
           };
         };
 
-        packages = {
+        packages = rec {
           default = pkgs.callPackage ./nix {inherit version name;};
+
+          doc-gen = pkgs.callPackage ./nix/doc.nix {iio-niri = default;};
         };
       };
 
