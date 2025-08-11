@@ -4,9 +4,9 @@
   ...
 }: let
   inherit (lib) mkEnableOption mkOption types mkIf getExe concatStringsSep;
-  cfg = config.service.iio-niri;
+  cfg = config.services.iio-niri;
 in {
-  options.service.iio-niri = {
+  options.services.iio-niri = {
     enable = mkEnableOption "IIO-Niri";
 
     package = mkOption {
