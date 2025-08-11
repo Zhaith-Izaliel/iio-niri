@@ -4,9 +4,9 @@
   ...
 }: let
   inherit (lib) mkEnableOption mkOption types mkIf getExe concatStringsSep;
-  cfg = config.programs.iio-niri;
+  cfg = config.service.iio-niri;
 in {
-  options.programs.iio-niri = {
+  options.service.iio-niri = {
     enable = mkEnableOption "IIO-Niri";
 
     package = mkOption {
@@ -15,20 +15,16 @@ in {
       description = "The iio-niri package to use.";
     };
 
-    service = {
-      enable = mkEnableOption "the systemd user service to run IIO-Niri";
+    niriUnit = mkOption {
+      type = types.nonEmptyStr;
+      default = "niri.service";
+      description = "The Niri **user** service unit to bind IIO-Niri's **user** service unit to.";
+    };
 
-      niriUnit = mkOption {
-        type = types.nonEmptyStr;
-        default = "niri.service";
-        description = "The Niri **user** service unit to bind IIO-Niri's **user** service unit to.";
-      };
-
-      extraArgs = mkOption {
-        type = types.listOf types.str;
-        default = [];
-        description = "Extra arguments to pass to IIO-Niri.";
-      };
+    extraArgs = mkOption {
+      type = types.listOf types.str;
+      default = [];
+      description = "Extra arguments to pass to IIO-Niri.";
     };
   };
 
@@ -37,15 +33,15 @@ in {
 
     environment.systemPackages = [cfg.package];
 
-    systemd.user.services.iio-niri = mkIf cfg.service.enable {
+    systemd.user.services.iio-niri = {
       description = "IIO-Niri";
-      wantedBy = [cfg.service.niriUnit];
-      bindsTo = [cfg.service.niriUnit];
-      partOf = [cfg.service.niriUnit];
-      after = [cfg.service.niriUnit];
+      wantedBy = [cfg.niriUnit];
+      bindsTo = [cfg.niriUnit];
+      partOf = [cfg.niriUnit];
+      after = [cfg.niriUnit];
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${getExe cfg.package} ${concatStringsSep " " cfg.service.extraArgs}";
+        ExecStart = "${getExe cfg.package} ${concatStringsSep " " cfg.extraArgs}";
         Restart = "on-failure";
       };
     };

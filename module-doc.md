@@ -3,7 +3,7 @@
 This file highlights the documentation of every option provided by this flake's module.
 
 
-## programs\.iio-niri\.enable
+## service\.iio-niri\.enable
 
 
 
@@ -26,7 +26,7 @@ boolean
 
 
 
-## programs\.iio-niri\.package
+## service\.iio-niri\.package
 
 
 
@@ -40,34 +40,11 @@ package
 
 
 *Default:*
-` <derivation iio-niri-1.1.0> `
+` <derivation iio-niri-1.2.0> `
 
 
 
-## programs\.iio-niri\.service\.enable
-
-
-
-Whether to enable the systemd user service to run IIO-Niri\.
-
-
-
-*Type:*
-boolean
-
-
-
-*Default:*
-` false `
-
-
-
-*Example:*
-` true `
-
-
-
-## programs\.iio-niri\.service\.extraArgs
+## service\.iio-niri\.extraArgs
 
 
 
@@ -85,7 +62,7 @@ list of string
 
 
 
-## programs\.iio-niri\.service\.niriUnit
+## service\.iio-niri\.niriUnit
 
 
 
