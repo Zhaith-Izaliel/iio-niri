@@ -203,7 +203,7 @@ Alternatively, you can start IIO-Niri with its own Systemd **user** unit:
 
 ```nix
 {...}: {
-  service.iio-niri = {
+  services.iio-niri = {
     enable = true;
 
     extraArgs = [

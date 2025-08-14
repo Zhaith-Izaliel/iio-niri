@@ -3,7 +3,7 @@
 This file highlights the documentation of every option provided by this flake's module.
 
 
-## service\.iio-niri\.enable
+## services\.iio-niri\.enable
 
 
 
@@ -26,7 +26,7 @@ boolean
 
 
 
-## service\.iio-niri\.package
+## services\.iio-niri\.package
 
 
 
@@ -44,7 +44,7 @@ package
 
 
 
-## service\.iio-niri\.extraArgs
+## services\.iio-niri\.extraArgs
 
 
 
@@ -62,7 +62,7 @@ list of string
 
 
 
-## service\.iio-niri\.niriUnit
+## services\.iio-niri\.niriUnit
 
 
 
