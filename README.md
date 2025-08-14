@@ -203,17 +203,13 @@ Alternatively, you can start IIO-Niri with its own Systemd **user** unit:
 
 ```nix
 {...}: {
-  programs.iio-niri = {
+  service.iio-niri = {
     enable = true;
 
-    service = {
-      enable = true;
-
-      extraArgs = [
-        "--monitor"
-        "eDP-1"
-      ];
-    };
+    extraArgs = [
+      "--monitor"
+      "eDP-1"
+    ];
   };
 }
 ```
