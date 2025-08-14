@@ -156,6 +156,12 @@ Options:
 
 At runtime, the program relies on [IIO-Sensor-Proxy][IIO-Sensor-Proxy-Url] to fetch updates on the accelerometer. Make sure it is running alongside IIO-Niri.
 
+Then start IIO-Niri with Niri:
+
+```kdl
+spawn-at-startup "iio-niri" "--monitor" "eDP-1"
+```
+
 ### With NixOS
 
 The provided flake offers a NixOS module to install IIO-Niri as well as an overlay.
@@ -187,19 +193,7 @@ outputs = { self, nixpkgs, iio-niri }: {
 };
 ```
 
-Then enable the module and start IIO-Niri in your Niri configuration.
-
-```nix
-{...}: {
-  programs.iio-niri.enable = true;
-}
-```
-
-```kdl
-spawn-at-startup "iio-niri" "--monitor" "eDP-1"
-```
-
-Alternatively, you can start IIO-Niri with its own Systemd **user** unit:
+Then enable the module.
 
 ```nix
 {...}: {
