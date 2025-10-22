@@ -10,22 +10,23 @@ rustPlatform.buildRustPackage {
   inherit version;
   pname = name;
 
-  PKG_CONFIG_PATH = "${dbus.dev}/lib/pkgconfig";
+  src = lib.cleanSource ../.;
+  cargoLock.lockFile = ../Cargo.lock;
 
   nativeBuildInputs = [
-    dbus
     pkg-config
   ];
 
-  cargoLock.lockFile = ../Cargo.lock;
-  src = lib.cleanSource ../.;
+  buildInputs = [
+    dbus
+  ];
 
-  meta = with lib; {
-    description = "Listen to iio-sensor-proxy and updates Niri output orientation depending on the accelerometer orientation.";
-    homepage = "https://github.com/Zhaith/iio-niri";
-    license = licenses.mit;
-    maintainers = with maintainers; [zhaithizaliel];
-    mainProgram = name;
-    platforms = platforms.linux;
+  meta = {
+    description = "Listen to iio-sensor-proxy and updates Niri output orientation depending on the accelerometer orientation";
+    homepage = "https://github.com/Zhaith-Izaliel/iio-niri";
+    license = lib.licenses.mit;
+    maintainers = with lib.maintainers; [zhaithizaliel];
+    mainProgram = "iio-niri";
+    platforms = lib.platforms.linux;
   };
 }
