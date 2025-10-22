@@ -149,6 +149,8 @@ There are two primary ways to install iio-niri via the Arch User Repository (AUR
   $ paru -S iio-niri
 ```
 
+##### Via makepkg (default)
+
 2. Alternatively, simply clone the AUR repository and install using makepkg:
 
 ```
