@@ -24,8 +24,8 @@ rustPlatform.buildRustPackage {
     description = "Listen to iio-sensor-proxy and updates Niri output orientation depending on the accelerometer orientation.";
     homepage = "https://github.com/Zhaith/iio-niri";
     license = licenses.mit;
-    maintainers = with maintainers; [];
+    maintainers = with maintainers; [zhaithizaliel];
     mainProgram = name;
-    platforms = platforms.all;
+    platforms = platforms.linux;
   };
 }

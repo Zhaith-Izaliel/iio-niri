@@ -121,7 +121,7 @@ If you intend to work with Nix:
    ```
 4. An executable for IIO-Niri will be available in `target/release/iio-niri`
 
-#### With Nix
+#### Nix
 
 1. Import the project in your flake inputs
    ```nix
@@ -187,7 +187,7 @@ Then start IIO-Niri with Niri:
 spawn-at-startup "iio-niri" "--monitor" "eDP-1"
 ```
 
-### With NixOS
+### NixOS
 
 The provided flake offers a NixOS module to install IIO-Niri as well as an overlay.
 
