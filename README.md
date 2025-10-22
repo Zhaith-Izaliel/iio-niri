@@ -135,6 +135,29 @@ If you intend to work with Nix:
    ```
 2. You can then install it from `inputs.iio-niri.packages.${system}.default` where `${system}` is your system descriptor. For Linux, usually `x86_64-linux`.
 
+#### Arch Linux (AUR)
+
+There are two primary ways to install iio-niri via the Arch User Repository (AUR):
+
+##### Via Preferred AUR Helper (Yay or Paru)
+
+1. Simply enter one of the two commands below, depending on your installed pacman wrapper:
+
+```
+  $ yay -S iio-niri
+  
+  $ paru -S iio-niri
+```
+
+2. Alternatively, simply clone the AUR repository and install using makepkg:
+
+```
+  git clone https://aur.archlinux.org/iio-niri.git
+  cd iio-niri
+  makepkg -si
+```
+
+**Please Note:** The AUR package for this project is maintained by the community, and not by the developer. While it is sourced directly from the master branch of the developer's GitHub repository, users should always exercise discretion and caution when installing packages via the AUR.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
