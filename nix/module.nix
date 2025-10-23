@@ -3,7 +3,7 @@
   lib,
   ...
 }: let
-  inherit (lib) mkEnableOption mkOption types mkIf getExe concatStringsSep;
+  inherit (lib) mkEnableOption mkOption types mkIf getExe escapeShellArgs mkDefault;
   cfg = config.services.iio-niri;
 in {
   options.services.iio-niri = {
@@ -29,7 +29,7 @@ in {
   };
 
   config = mkIf cfg.enable {
-    hardware.sensor.iio.enable = true;
+    hardware.sensor.iio.enable = mkDefault true;
 
     environment.systemPackages = [cfg.package];
 
@@ -41,9 +41,11 @@ in {
       after = [cfg.niriUnit];
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${getExe cfg.package} ${concatStringsSep " " cfg.extraArgs}";
+        ExecStart = "${getExe cfg.package} ${escapeShellArgs cfg.extraArgs}";
         Restart = "on-failure";
       };
     };
   };
+
+  meta.maintainers = with lib.maintainers; [zhaithizaliel];
 }
