@@ -123,6 +123,15 @@ If you intend to work with Nix:
 
 #### Nix
 
+IIO-Niri is officially available in Nixpkgs under `iio-niri` and has a corresponding module
+at `programs.iio-niri`. This flake exists purely for bleeding edge updates and
+for historical reason.
+
+The maintainer of the project is also the maintainer of the package and module
+upstream (a.k.a. yours truly).
+
+If you prefer, you can install it with the provided flake like so:
+
 1. Import the project in your flake inputs
    ```nix
    inputs = {
@@ -159,7 +168,10 @@ There are two primary ways to install iio-niri via the Arch User Repository (AUR
   makepkg -si
 ```
 
-**Please Note:** The AUR package for this project is maintained by the community, and not by the developer. While it is sourced directly from the master branch of the developer's GitHub repository, users should always exercise discretion and caution when installing packages via the AUR.
+**Please Note:** The AUR package for this project is maintained by the
+community, and not by the developer. While it is sourced directly from the
+master branch of the developer's GitHub repository, users should always exercise
+discretion and caution when installing packages via the AUR.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
