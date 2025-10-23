@@ -6,6 +6,9 @@
   inherit (lib) mkEnableOption mkOption types mkIf getExe escapeShellArgs mkDefault;
   cfg = config.services.iio-niri;
 in {
+  # Avoid conflicts with nixpkgs, since IIO-Niri has been merged upstream
+  disabledModules = ["programs/iio-niri.nix"];
+
   options.services.iio-niri = {
     enable = mkEnableOption "IIO-Niri";
 
