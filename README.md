@@ -123,7 +123,7 @@ If you intend to work with Nix:
 
 #### Nix
 
-IIO-Niri is officially available in Nixpkgs under `iio-niri` and has a corresponding module
+IIO-Niri is officially available in Nixpkgs under `pkgs.iio-niri` and has a corresponding module
 at `programs.iio-niri`. This flake exists purely for bleeding edge updates and
 for historical reason.
 
@@ -146,7 +146,7 @@ If you prefer, you can install it with the provided flake like so:
 
 #### Arch Linux (AUR)
 
-There are two primary ways to install iio-niri via the Arch User Repository (AUR):
+There are two primary ways to install IIO-Niri via the Arch User Repository (AUR):
 
 ##### Via Preferred AUR Helper (Yay or Paru)
 
