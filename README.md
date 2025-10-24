@@ -124,7 +124,7 @@ If you intend to work with Nix:
 #### Nix
 
 IIO-Niri is officially available in Nixpkgs under `pkgs.iio-niri` and has a corresponding module
-at `programs.iio-niri`. This flake exists purely for bleeding edge updates and
+at `services.iio-niri`. This flake exists purely for bleeding edge updates and
 for historical reason.
 
 The maintainer of the project is also the maintainer of the package and module
