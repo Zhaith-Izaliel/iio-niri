@@ -6,6 +6,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
+    thread,
     time::Duration,
 };
 
@@ -41,6 +42,7 @@ pub fn listen_orientation(
             let orientation = get_orientation(interface, &proxy)?;
             update_orientation(socket, monitor.to_owned(), orientation.as_str())?;
         }
+        thread::yield_now();
     }
 
     release_accelerometer(interface, &proxy)?;

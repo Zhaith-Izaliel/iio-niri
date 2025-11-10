@@ -7,7 +7,7 @@
   cfg = config.services.iio-niri;
 in {
   # Avoid conflicts with nixpkgs, since IIO-Niri has been merged upstream
-  disabledModules = ["programs/iio-niri.nix"];
+  disabledModules = ["services/misc/iio-niri.nix"];
 
   options.services.iio-niri = {
     enable = mkEnableOption "IIO-Niri";
