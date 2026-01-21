@@ -10,7 +10,7 @@ use std::{
     time::Duration,
 };
 
-use crate::monitor::update_orientation;
+use crate::{app::TransformMatrix, monitor::update_orientation};
 
 pub const INTERFACE: &str = "net.hadess.SensorProxy";
 pub const PATH: &str = "/net/hadess/SensorProxy";
@@ -19,6 +19,7 @@ pub fn listen_orientation(
     conn: &Connection,
     socket: &mut Socket,
     monitor: String,
+    matrix: &TransformMatrix,
     interface: &str,
     path: &str,
     timeout: u64,
@@ -40,7 +41,7 @@ pub fn listen_orientation(
         let found_signal = conn.process(Duration::from_millis(timeout))?;
         if found_signal {
             let orientation = get_orientation(interface, &proxy)?;
-            update_orientation(socket, monitor.to_owned(), orientation.as_str())?;
+            update_orientation(socket, monitor.to_owned(), orientation.as_str(), matrix)?;
         }
         thread::yield_now();
     }

@@ -3,6 +3,8 @@ use clap::Parser;
 use dbus::{blocking::Connection, message::MatchRule, Message};
 use niri_ipc::socket::Socket;
 
+use crate::app::parse_transform_matrix;
+
 mod app;
 mod monitor;
 mod proxy;
@@ -16,6 +18,7 @@ fn main() -> Result<()> {
     };
 
     let monitor = monitor::get_monitor(&mut socket, config.monitor)?;
+    let matrix = parse_transform_matrix(config.transform);
 
     let conn = match Connection::new_system() {
         Ok(it) => it,
@@ -34,6 +37,7 @@ fn main() -> Result<()> {
         &conn,
         &mut socket,
         monitor.to_owned(),
+        &matrix,
         proxy::INTERFACE,
         proxy::PATH,
         config.timeout,

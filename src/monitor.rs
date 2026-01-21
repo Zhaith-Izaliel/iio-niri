@@ -3,13 +3,15 @@ use std::collections::HashMap;
 use anyhow::{anyhow, Result};
 use niri_ipc::{socket::Socket, Output, OutputAction, Request, Response, Transform};
 
-fn parse_orientation(orientation: &str) -> Transform {
+use crate::app::TransformMatrix;
+
+fn parse_orientation(orientation: &str, matrix: &TransformMatrix) -> Transform {
     match orientation {
-        "normal" => Transform::Normal,
-        "bottom-up" => Transform::_180,
-        "right-up" => Transform::_270,
-        "left-up" => Transform::_90,
-        _ => Transform::Normal,
+        "normal" => matrix.0,
+        "left-up" => matrix.1,
+        "bottom-up" => matrix.2,
+        "right-up" => matrix.3,
+        _ => matrix.0,
     }
 }
 
@@ -43,8 +45,13 @@ pub fn get_monitor(socket: &mut Socket, config_monitor: Option<String>) -> Resul
     }
 }
 
-pub fn update_orientation(socket: &mut Socket, monitor: String, orientation: &str) -> Result<()> {
-    let orientation = parse_orientation(orientation);
+pub fn update_orientation(
+    socket: &mut Socket,
+    monitor: String,
+    orientation: &str,
+    matrix: &TransformMatrix,
+) -> Result<()> {
+    let orientation = parse_orientation(orientation, matrix);
 
     let outputs = get_outputs(socket)?;
 
