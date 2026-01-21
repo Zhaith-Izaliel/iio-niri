@@ -1,4 +1,5 @@
 use clap::Parser;
+use clap_verbosity_flag::{Verbosity, WarnLevel};
 use niri_ipc::Transform;
 
 #[derive(Debug)]
@@ -20,6 +21,9 @@ pub fn parse_transform_matrix(transform: Option<Vec<Transform>>) -> TransformMat
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct App {
+    #[command(flatten)]
+    pub verbosity: Verbosity<WarnLevel>,
+
     /// The monitor to rotate depending on the accelerometer orientation. Defaults to the first monitor Niri can see.
     #[arg(short, long)]
     pub monitor: Option<String>,

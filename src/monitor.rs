@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
+use log::{debug, info};
 use niri_ipc::{socket::Socket, Output, OutputAction, Request, Response, Transform};
 
 use crate::app::TransformMatrix;
@@ -78,6 +79,7 @@ pub fn update_orientation(
         return Ok(());
     }
 
+    debug!("Updating screen orientation...");
     if let Err(str) = socket.send(Request::Output {
         output: monitor.to_owned(),
         action: OutputAction::Transform {
@@ -86,6 +88,10 @@ pub fn update_orientation(
     })? {
         return Err(anyhow!(str));
     };
+    info!(
+        "Updated orientation from {:?} to {:?}.",
+        old_orientation, orientation
+    );
 
     Ok(())
 }

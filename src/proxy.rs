@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use dbus::blocking::{stdintf::org_freedesktop_dbus::Properties, Connection, Proxy};
+use log::{debug, info};
 use niri_ipc::socket::Socket;
 use std::{
     sync::{
@@ -32,21 +33,32 @@ pub fn listen_orientation(
         ));
     }
 
+    debug!("Claiming accelerometer...");
     claim_accelerometer(interface, &proxy)?;
+    debug!("Accelerometer claimed.");
 
+    debug!("Creating thread for sudden exits cleanup...");
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&term))?;
+    debug!("Thread created.");
 
+    info!("Listening to accelerometer changes...");
     while !term.load(Ordering::Relaxed) {
         let found_signal = conn.process(Duration::from_millis(timeout))?;
         if found_signal {
+            debug!("Found accelerometer's signal!");
+            debug!("Getting orientation...");
             let orientation = get_orientation(interface, &proxy)?;
+            debug!("Orientation obtained.");
             update_orientation(socket, monitor.to_owned(), orientation.as_str(), matrix)?;
         }
         thread::yield_now();
     }
 
+    debug!("Releasing accelerometer...");
     release_accelerometer(interface, &proxy)?;
+    debug!("Accelerometer released.");
+    info!("Exiting!");
 
     Ok(())
 }
