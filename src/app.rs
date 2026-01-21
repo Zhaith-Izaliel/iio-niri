@@ -3,17 +3,27 @@ use clap_verbosity_flag::{Verbosity, WarnLevel};
 use niri_ipc::Transform;
 
 #[derive(Debug)]
-pub struct TransformMatrix(pub Transform, pub Transform, pub Transform, pub Transform);
+pub struct TransformMatrix {
+    pub normal: Transform,
+    pub left_up: Transform,
+    pub bottom_up: Transform,
+    pub right_up: Transform,
+}
 
 pub fn parse_transform_matrix(transform: Option<Vec<Transform>>) -> TransformMatrix {
     match transform {
-        Some(vec) => TransformMatrix(vec[0], vec[1], vec[2], vec[3]),
-        None => TransformMatrix(
-            Transform::Normal,
-            Transform::_90,
-            Transform::_180,
-            Transform::_270,
-        ),
+        Some(vec) => TransformMatrix {
+            normal: vec[0],
+            left_up: vec[1],
+            bottom_up: vec[2],
+            right_up: vec[3],
+        },
+        None => TransformMatrix {
+            normal: Transform::Normal,
+            left_up: Transform::_90,
+            bottom_up: Transform::_180,
+            right_up: Transform::_270,
+        },
     }
 }
 

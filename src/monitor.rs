@@ -8,11 +8,11 @@ use crate::app::TransformMatrix;
 
 fn parse_orientation(orientation: &str, matrix: &TransformMatrix) -> Transform {
     match orientation {
-        "normal" => matrix.0,
-        "left-up" => matrix.1,
-        "bottom-up" => matrix.2,
-        "right-up" => matrix.3,
-        _ => matrix.0,
+        "normal" => matrix.normal,
+        "left-up" => matrix.left_up,
+        "bottom-up" => matrix.bottom_up,
+        "right-up" => matrix.right_up,
+        _ => matrix.normal,
     }
 }
 
