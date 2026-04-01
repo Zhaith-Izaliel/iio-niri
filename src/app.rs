@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use niri_ipc::Transform;
 
@@ -10,30 +10,32 @@ pub struct TransformMatrix {
     pub right_up: Transform,
 }
 
-pub fn parse_transform_matrix(transform: Option<Vec<Transform>>) -> TransformMatrix {
-    match transform {
-        Some(vec) => TransformMatrix {
-            normal: vec[0],
-            left_up: vec[1],
-            bottom_up: vec[2],
-            right_up: vec[3],
-        },
-        None => TransformMatrix {
-            normal: Transform::Normal,
-            left_up: Transform::_90,
-            bottom_up: Transform::_180,
-            right_up: Transform::_270,
-        },
-    }
-}
-
-#[derive(Parser, Clone)]
+#[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct App {
     #[command(flatten)]
     pub verbosity: Verbosity<WarnLevel>,
 
+    #[command(subcommand)]
+    pub command: Commands,
+
+    /// Path to the socket for controlling IIO-Niri with its own IPC
+    #[arg(short, long)]
+    pub socket: Option<String>,
+}
+
+#[derive(Subcommand)]
+pub enum Commands {
+    /// Listen for the accelerometer orientation
+    Listen(ListenArgs),
+
+    /// Send a command to a running instance of IIO-Niri
+    Msg(MsgArgs),
+}
+
+#[derive(Args)]
+pub struct ListenArgs {
     /// The monitor to rotate depending on the accelerometer orientation. Defaults to the first monitor Niri can see.
     #[arg(short, long)]
     pub monitor: Option<String>,
@@ -64,4 +66,67 @@ pub struct App {
     /// The path to the niri IPC socket.
     #[arg(short, long)]
     pub niri_socket: Option<String>,
+}
+
+#[derive(Args)]
+pub struct MsgArgs {
+    #[command(subcommand)]
+    command: MsgSubcommandArgs,
+}
+
+#[derive(Subcommand)]
+pub enum MsgSubcommandArgs {
+    /// Lock the rotation of the screen.
+    LockRotation(LockRotationArgs),
+
+    /// Change the monitor to rotate with the accelerometer orientation.
+    Monitor(MonitorArgs),
+
+    /// Change the transformation matrix.
+    Transform(TransformArgs),
+
+    /// Change the timeout used in DBus requests.
+    Timeout(TimeoutArgs),
+
+    /// Change the path to the Niri socket.
+    NiriSocket(NiriSocketArgs),
+}
+
+#[derive(Args)]
+pub struct LockRotationArgs {
+    /// Lock the rotation of the screen
+    lock_rotation: bool,
+}
+
+#[derive(Args)]
+pub struct MonitorArgs {
+    /// The monitor to rotate depending on the accelerometer orientation. Defaults to the first monitor Niri can see.
+    monitor: String,
+}
+
+#[derive(Args)]
+pub struct TransformArgs {
+    /// Maps the accelerometer transforms (normal,left-up,bottom-up,right-up) to Niri's transforms.
+    ///
+    /// In some devices the accelerometer orientation doesn't match the display orientation.
+    /// This option allows you to provide the mapping from your accelerometer orientation to Niri's transform
+    /// Passing a value such as 90,normal,180,270 will provide the following accelerometer mapping:
+    ///
+    /// - normal -> 90
+    /// - left-up -> normal
+    /// - bottom-up -> 180
+    /// - right-up -> 270
+    transform: Vec<Transform>,
+}
+
+#[derive(Args)]
+pub struct NiriSocketArgs {
+    /// The path to the niri IPC socket.
+    niri_socket: String,
+}
+
+#[derive(Args)]
+pub struct TimeoutArgs {
+    /// The number of milliseconds before timeout for a dbus request.
+    timeout: u64,
 }

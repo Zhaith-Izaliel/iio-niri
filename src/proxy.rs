@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use dbus::blocking::{stdintf::org_freedesktop_dbus::Properties, Connection, Proxy};
 use log::{debug, info};
-use niri_ipc::socket::Socket;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -11,21 +10,24 @@ use std::{
     time::Duration,
 };
 
-use crate::{app::TransformMatrix, monitor::update_orientation};
+use crate::{ipc::IioNiriSocket, monitor::update_orientation, state::State};
 
 pub const INTERFACE: &str = "net.hadess.SensorProxy";
 pub const PATH: &str = "/net/hadess/SensorProxy";
 
 pub fn listen_orientation(
-    conn: &Connection,
-    socket: &mut Socket,
-    monitor: String,
-    matrix: &TransformMatrix,
+    state: &mut State,
+    dbus_connection: &Connection,
+    iio_niri_socket: &IioNiriSocket,
     interface: &str,
     path: &str,
-    timeout: u64,
 ) -> Result<()> {
-    let proxy = Proxy::new(interface, path, Duration::from_millis(timeout), conn);
+    let proxy = Proxy::new(
+        interface,
+        path,
+        Duration::from_millis(state.timeout),
+        dbus_connection,
+    );
 
     if !has_accelerometer(interface, &proxy)? {
         return Err(anyhow!(
@@ -44,14 +46,22 @@ pub fn listen_orientation(
 
     info!("Listening to accelerometer changes...");
     while !term.load(Ordering::Relaxed) {
-        let found_signal = conn.process(Duration::from_millis(timeout))?;
+        iio_niri_socket.process(state);
+
+        let found_signal = dbus_connection.process(Duration::from_millis(state.timeout))?;
         if found_signal {
             debug!("Found accelerometer's signal!");
             debug!("Getting orientation...");
             let orientation = get_orientation(interface, &proxy)?;
             debug!("Orientation obtained.");
-            update_orientation(socket, monitor.to_owned(), orientation.as_str(), matrix)?;
+            update_orientation(
+                &mut state.niri_socket,
+                state.monitor.to_owned(),
+                orientation.as_str(),
+                &state.transform,
+            )?;
         }
+
         thread::yield_now();
     }
 

@@ -1,18 +1,42 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use dbus::{blocking::Connection, message::MatchRule, Message};
-use log::{debug, error, info, warn};
-use niri_ipc::socket::Socket;
+use log::{debug, error};
 
-use crate::app::{parse_transform_matrix, App};
+use crate::{app::Commands, ipc::IioNiriSocket, state::State};
 
 mod app;
+mod ipc;
 mod monitor;
 mod proxy;
+mod state;
 
 fn main() -> Result<()> {
     let args = app::App::parse();
-    let response = run(args);
+    env_logger::Builder::new()
+        .filter_level(args.verbosity.into())
+        .init();
+
+    let mut state: State;
+
+    debug!("Creating IIO-Niri socket...");
+    let iio_niri_socket = IioNiriSocket::bind(args.socket)?;
+    debug!("Socket created at {}", iio_niri_socket.get_path());
+
+    let response = match args.command {
+        Commands::Listen(listen_args) => match State::from_args(listen_args) {
+            Ok(val) => {
+                state = val;
+                listen(&mut state, &iio_niri_socket)
+            }
+            Err(e) => Err(e),
+        },
+        Commands::Msg(_msg_args) => {
+            iio_niri_socket.send(String::from("Hello World!"));
+            Err(anyhow!("Not implemented"))
+        }
+    };
+
     match response {
         Ok(()) => Ok(()),
         Err(e) => {
@@ -22,27 +46,7 @@ fn main() -> Result<()> {
     }
 }
 
-fn run(args: App) -> Result<()> {
-    env_logger::Builder::new()
-        .filter_level(args.verbosity.into())
-        .init();
-
-    let mut socket = match args.niri_socket {
-        Some(path) => {
-            info!("Using socket at {}.", path);
-            Socket::connect_to(path)?
-        }
-        None => {
-            warn!("Using default socket.");
-            Socket::connect()?
-        }
-    };
-
-    let monitor = monitor::get_monitor(&mut socket, args.monitor)?;
-    warn!("Using monitor {}.", monitor);
-    let matrix = parse_transform_matrix(args.transform);
-    info!("Using transformation matrix {:?}.", matrix);
-
+fn listen(state: &mut State, socket: &IioNiriSocket) -> Result<()> {
     debug!("Connecting to the system bus...");
     let conn = match Connection::new_system() {
         Ok(it) => it,
@@ -60,13 +64,5 @@ fn run(args: App) -> Result<()> {
     )?;
     debug!("Finished setting matches for iio-sensor-proxy.");
 
-    proxy::listen_orientation(
-        &conn,
-        &mut socket,
-        monitor.to_owned(),
-        &matrix,
-        proxy::INTERFACE,
-        proxy::PATH,
-        args.timeout,
-    )
+    proxy::listen_orientation(state, &conn, socket, proxy::INTERFACE, proxy::PATH)
 }
