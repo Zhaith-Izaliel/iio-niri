@@ -7,6 +7,31 @@ use std::{
 
 use crate::state::State;
 
+fn get_iio_niri_socket_directory() -> String {
+    match std::env::var("XDG_RUNTIME_DIR") {
+        Ok(val) => val,
+        Err(e) => {
+            error!("Couldn't get XDG_RUNTIME_DIR:\n {}", e);
+            String::from("/tmp")
+        }
+    }
+}
+
+fn get_iio_niri_socket_path() -> String {
+    let wayland_display = std::env::var("WAYLAND_DISPLAY");
+    format!(
+        "{}/iio-niri.{}.socket",
+        get_iio_niri_socket_directory(),
+        match wayland_display {
+            Ok(val) => val,
+            Err(e) => {
+                error!("Couldn't get WAYLAND_DISPLAY: \n {}", e);
+                String::from("unknown")
+            }
+        }
+    )
+}
+
 pub struct IioNiriSocket {
     socket: UnixListener,
     path: String,
@@ -18,6 +43,7 @@ impl IioNiriSocket {
             Some(path) => path,
             None => get_iio_niri_socket_path(),
         };
+
         match UnixListener::bind(path.clone()) {
             Ok(s) => Ok(Self { socket: s, path }),
             Err(e) => Err(anyhow!("Couldn't bind socket at {}: \n {}", path, e)),
@@ -52,20 +78,26 @@ impl IioNiriSocket {
         }
     }
 
-    pub fn send(&self, message: String) {
-        let local_addr = match self.socket.local_addr() {
-            Ok(addr) => addr,
-            Err(e) => {
-                error!(
-                    "Couldn't get local address of socket at {}:\n {}",
-                    self.get_path(),
-                    e
-                );
-                return;
-            }
-        };
+    pub fn get_path(&self) -> String {
+        self.path.clone()
+    }
+}
 
-        let stream = UnixStream::connect_addr(&local_addr);
+pub struct IioNiriClient {
+    path: String,
+}
+
+impl IioNiriClient {
+    pub fn bind(socket_path: Option<String>) -> Self {
+        let path = match socket_path {
+            Some(path) => path,
+            None => get_iio_niri_socket_path(),
+        };
+        Self { path }
+    }
+
+    pub fn send(&self, message: String) {
+        let stream = UnixStream::connect(self.get_path());
         match stream {
             Ok(mut stream) => {
                 if let Err(e) = stream.write_all(message.into_bytes().as_slice()) {
@@ -85,26 +117,4 @@ impl IioNiriSocket {
     pub fn get_path(&self) -> String {
         self.path.clone()
     }
-}
-
-fn get_iio_niri_socket_path() -> String {
-    let xdg_runtime_dir = std::env::var("XDG_RUNTIME_DIR");
-    let wayland_display = std::env::var("WAYLAND_DISPLAY");
-    format!(
-        "{}/iio-niri/iio-niri.{}.socket",
-        match xdg_runtime_dir {
-            Ok(val) => val,
-            Err(e) => {
-                error!("Couldn't get XDG_RUNTIME_DIR:\n {}", e);
-                String::from("/tmp")
-            }
-        },
-        match wayland_display {
-            Ok(val) => val,
-            Err(e) => {
-                error!("Couldn't get WAYLAND_DISPLAY: \n {}", e);
-                String::from("unknown")
-            }
-        }
-    )
 }

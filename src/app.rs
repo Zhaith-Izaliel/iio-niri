@@ -94,8 +94,8 @@ pub enum MsgSubcommandArgs {
 
 #[derive(Args)]
 pub struct LockRotationArgs {
-    /// Lock the rotation of the screen
-    lock_rotation: bool,
+    /// Lock the rotation of the screen. If omitted, it toggles locking rotation or not
+    lock_rotation: Option<bool>,
 }
 
 #[derive(Args)]

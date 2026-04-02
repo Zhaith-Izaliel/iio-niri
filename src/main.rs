@@ -3,7 +3,11 @@ use clap::Parser;
 use dbus::{blocking::Connection, message::MatchRule, Message};
 use log::{debug, error};
 
-use crate::{app::Commands, ipc::IioNiriSocket, state::State};
+use crate::{
+    app::Commands,
+    ipc::{IioNiriClient, IioNiriSocket},
+    state::State,
+};
 
 mod app;
 mod ipc;
@@ -19,20 +23,17 @@ fn main() -> Result<()> {
 
     let mut state: State;
 
-    debug!("Creating IIO-Niri socket...");
-    let iio_niri_socket = IioNiriSocket::bind(args.socket)?;
-    debug!("Socket created at {}", iio_niri_socket.get_path());
-
     let response = match args.command {
         Commands::Listen(listen_args) => match State::from_args(listen_args) {
             Ok(val) => {
                 state = val;
-                listen(&mut state, &iio_niri_socket)
+                listen(&mut state, args.socket)
             }
             Err(e) => Err(e),
         },
         Commands::Msg(_msg_args) => {
-            iio_niri_socket.send(String::from("Hello World!"));
+            let client = IioNiriClient::bind(args.socket);
+            client.send(String::from("hello world!"));
             Err(anyhow!("Not implemented"))
         }
     };
@@ -46,7 +47,11 @@ fn main() -> Result<()> {
     }
 }
 
-fn listen(state: &mut State, socket: &IioNiriSocket) -> Result<()> {
+fn listen(state: &mut State, iio_niri_socket_path: Option<String>) -> Result<()> {
+    debug!("Creating IIO-Niri socket...");
+    let iio_niri_socket = IioNiriSocket::bind(iio_niri_socket_path)?;
+    debug!("Socket created at {}", iio_niri_socket.get_path());
+
     debug!("Connecting to the system bus...");
     let conn = match Connection::new_system() {
         Ok(it) => it,
@@ -64,5 +69,11 @@ fn listen(state: &mut State, socket: &IioNiriSocket) -> Result<()> {
     )?;
     debug!("Finished setting matches for iio-sensor-proxy.");
 
-    proxy::listen_orientation(state, &conn, socket, proxy::INTERFACE, proxy::PATH)
+    proxy::listen_orientation(
+        state,
+        &conn,
+        &iio_niri_socket,
+        proxy::INTERFACE,
+        proxy::PATH,
+    )
 }
