@@ -33,7 +33,7 @@ fn main() -> Result<()> {
         },
         Commands::Msg(_msg_args) => {
             let client = IioNiriClient::bind(args.socket);
-            client.send(String::from("hello world!"));
+            client.send(String::from("hello world!"))?;
             Err(anyhow!("Not implemented"))
         }
     };

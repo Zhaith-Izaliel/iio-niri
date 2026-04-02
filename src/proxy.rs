@@ -49,7 +49,7 @@ pub fn listen_orientation(
         iio_niri_socket.process(state);
 
         let found_signal = dbus_connection.process(Duration::from_millis(state.timeout))?;
-        if found_signal {
+        if found_signal && !state.lock_rotation {
             debug!("Found accelerometer's signal!");
             debug!("Getting orientation...");
             let orientation = get_orientation(interface, &proxy)?;

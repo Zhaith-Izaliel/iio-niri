@@ -87,9 +87,6 @@ pub enum MsgSubcommandArgs {
 
     /// Change the timeout used in DBus requests.
     Timeout(TimeoutArgs),
-
-    /// Change the path to the Niri socket.
-    NiriSocket(NiriSocketArgs),
 }
 
 #[derive(Args)]
@@ -117,12 +114,6 @@ pub struct TransformArgs {
     /// - bottom-up -> 180
     /// - right-up -> 270
     transform: Vec<Transform>,
-}
-
-#[derive(Args)]
-pub struct NiriSocketArgs {
-    /// The path to the niri IPC socket.
-    niri_socket: String,
 }
 
 #[derive(Args)]

@@ -58,8 +58,7 @@ impl IioNiriSocket {
                 e
             ));
         };
-        // TODO: Change state.
-        println!("{}", buffer);
+        state.update_with_message(buffer.as_str())?;
         Ok(())
     }
 
@@ -96,22 +95,29 @@ impl IioNiriClient {
         Self { path }
     }
 
-    pub fn send(&self, message: String) {
+    pub fn send(&self, message: String) -> Result<()> {
         let stream = UnixStream::connect(self.get_path());
         match stream {
             Ok(mut stream) => {
                 if let Err(e) = stream.write_all(message.into_bytes().as_slice()) {
-                    error!("Couldn't write message to the stream: \n {}", e)
+                    return Err(anyhow!("Couldn't write message to the stream: \n {}", e));
                 }
+                Ok(())
             }
-            Err(e) => {
-                error!(
-                    "Couldn't send message to socket ({}): \n {}",
-                    self.get_path(),
-                    e
-                )
-            }
+            Err(e) => Err(anyhow!(
+                "Couldn't send message to socket ({}): \n {}",
+                self.get_path(),
+                e
+            )),
         }
+    }
+
+    pub fn send_rotation_lock(&self, state: &State, rotation_lock: Option<bool>) -> Result<()> {
+        let is_lock = match rotation_lock {
+            Some(e) => e,
+            None => !state.lock_rotation,
+        };
+        self.send(format!("lock-rotation:{}", is_lock))
     }
 
     pub fn get_path(&self) -> String {

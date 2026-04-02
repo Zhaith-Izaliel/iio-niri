@@ -1,4 +1,6 @@
-use anyhow::Result;
+use std::str::FromStr;
+
+use anyhow::{anyhow, Result};
 use log::{debug, info, warn};
 use niri_ipc::{socket::Socket, Transform};
 
@@ -21,6 +23,63 @@ fn parse_transform_matrix(transform: Option<Vec<Transform>>) -> TransformMatrix 
             bottom_up: Transform::_180,
             right_up: Transform::_270,
         },
+    }
+}
+
+enum StateChange {
+    LockRotation(bool),
+    Monitor(String),
+    Transform(TransformMatrix),
+    Timeout(u64),
+}
+
+impl FromStr for StateChange {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let tokens: Vec<&str> = s.split(":").collect();
+        if tokens.len() != 2 {
+            return Err(anyhow!("Couldn't parse message: {}", s));
+        }
+        let tokens = (tokens[0], tokens[1]);
+
+        match tokens.0 {
+            "monitor" => Ok(Self::Monitor(tokens.1.to_owned())),
+            "lock_rotation" => {
+                let lr = match tokens.1.parse::<bool>() {
+                    Ok(b) => b,
+                    Err(_) => {
+                        return Err(anyhow!(
+                            "Couldn't parse boolean value for `lock_rotation` message"
+                        ));
+                    }
+                };
+                Ok(Self::LockRotation(lr))
+            }
+            "timeout" => {
+                let timeout = match tokens.1.parse::<u64>() {
+                    Ok(a) => a,
+                    Err(_) => {
+                        return Err(anyhow!(
+                            "Couldn't parse integer value for `timeout` message"
+                        ));
+                    }
+                };
+                Ok(Self::Timeout(timeout))
+            }
+            "transform" => {
+                let transforms = tokens
+                    .1
+                    .split(",")
+                    .map(Transform::from_str)
+                    .collect::<Result<Vec<Transform>, &str>>();
+                match transforms {
+                    Ok(t) => Ok(Self::Transform(parse_transform_matrix(Some(t)))),
+                    Err(e) => Err(anyhow!("couldn't parse transform matrix: {}", e)),
+                }
+            }
+            _ => Err(anyhow!("Couldn't parse message: {}", s)),
+        }
     }
 }
 
@@ -77,5 +136,17 @@ impl State {
             timeout: args.timeout,
             niri_socket,
         })
+    }
+
+    pub fn update_with_message(&mut self, message: &str) -> Result<()> {
+        debug!("Updating state with message from IPC socket...");
+        let state_change = StateChange::from_str(message)?;
+        match state_change {
+            StateChange::Monitor(m) => self.monitor = m,
+            StateChange::LockRotation(b) => self.lock_rotation = b,
+            StateChange::Transform(t) => self.transform = t,
+            StateChange::Timeout(t) => self.timeout = t,
+        }
+        Ok(())
     }
 }
