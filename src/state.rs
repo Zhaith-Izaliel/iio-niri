@@ -33,6 +33,7 @@ fn parse_transform_matrix(transform: Option<Vec<Transform>>) -> TransformMatrix 
 
 enum StateChange {
     LockRotation(bool),
+    ToggleLockRotation(),
     Monitor(String),
     Transform(TransformMatrix),
     Timeout(u64),
@@ -62,6 +63,7 @@ impl FromStr for StateChange {
                 };
                 Ok(Self::LockRotation(lr))
             }
+            "toggle_lock_rotation" => Ok(Self::ToggleLockRotation()),
             "timeout" => {
                 let timeout = match tokens.1.parse::<u64>() {
                     Ok(a) => a,
@@ -81,7 +83,11 @@ impl FromStr for StateChange {
                     .collect::<Result<Vec<Transform>, &str>>();
                 match transforms {
                     Ok(t) => Ok(Self::Transform(parse_transform_matrix(Some(t)))),
-                    Err(e) => Err(anyhow!("couldn't parse transform matrix: {}", e)),
+                    Err(e) => Err(anyhow!(
+                        "Couldn't parse transform matrix {}:\n {}",
+                        tokens.1,
+                        e
+                    )),
                 }
             }
             _ => Err(anyhow!("Couldn't parse message: {}", s)),
@@ -91,7 +97,7 @@ impl FromStr for StateChange {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct State {
     /// Lock the rotation of the screen
     pub lock_rotation: bool,
@@ -136,9 +142,12 @@ impl State {
         match state_change {
             StateChange::Monitor(m) => self.monitor = m,
             StateChange::LockRotation(b) => self.lock_rotation = b,
+            StateChange::ToggleLockRotation() => self.lock_rotation = !self.lock_rotation,
             StateChange::Transform(t) => self.transform = t,
             StateChange::Timeout(t) => self.timeout = t,
         }
+        debug!("State updated!");
+        debug!("New state: {:?}", self);
         Ok(())
     }
 }

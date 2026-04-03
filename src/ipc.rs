@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use niri_ipc::Transform;
 use std::{io::Write, os::unix::net::UnixStream};
 
 use crate::{
@@ -41,6 +42,9 @@ impl Client {
             MsgSubcommandArgs::LockRotation(sub_command) => {
                 self.send(format!("lock_rotation:{}", sub_command.lock_rotation))
             }
+            MsgSubcommandArgs::ToggleLockRotation(_) => {
+                self.send(String::from("toggle_lock_rotation:"))
+            }
             MsgSubcommandArgs::Monitor(sub_command) => {
                 self.send(format!("monitor:{}", sub_command.monitor))
             }
@@ -49,11 +53,22 @@ impl Client {
             }
             MsgSubcommandArgs::Transform(sub_command) => self.send(format!(
                 "transform:{}",
-                sub_command.transform.iter().fold(String::new(), |acc, e| {
+                sub_command.transform.iter().fold(String::new(), |acc, el| {
+                    let transform_string: &str = match el {
+                        Transform::Normal => "normal",
+                        Transform::_90 => "90",
+                        Transform::_180 => "180",
+                        Transform::_270 => "270",
+                        Transform::Flipped => "flipped",
+                        Transform::Flipped90 => "flipped-90",
+                        Transform::Flipped180 => "flipped-180",
+                        Transform::Flipped270 => "flipped-270",
+                    };
+
                     if acc.is_empty() {
-                        format!("{:?}", e)
+                        String::from(transform_string)
                     } else {
-                        format!("{},{:?}", acc, e)
+                        format!("{},{}", acc, transform_string)
                     }
                 })
             )),

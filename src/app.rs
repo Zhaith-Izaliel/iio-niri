@@ -71,6 +71,9 @@ pub enum MsgSubcommandArgs {
     /// Lock the rotation of the screen.
     LockRotation(LockRotationArgs),
 
+    /// Toggle locking rotation
+    ToggleLockRotation(ToggleLockRotationArgs),
+
     /// Change the monitor to rotate with the accelerometer orientation.
     Monitor(MonitorArgs),
 
@@ -87,6 +90,9 @@ pub struct LockRotationArgs {
     #[arg(action=ArgAction::Set)]
     pub lock_rotation: bool,
 }
+
+#[derive(Args)]
+pub struct ToggleLockRotationArgs;
 
 #[derive(Args)]
 pub struct MonitorArgs {
@@ -106,6 +112,7 @@ pub struct TransformArgs {
     /// - left-up -> normal
     /// - bottom-up -> 180
     /// - right-up -> 270
+    #[clap(num_args = 4, verbatim_doc_comment)]
     pub transform: Vec<Transform>,
 }
 
