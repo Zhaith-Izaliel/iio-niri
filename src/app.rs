@@ -93,7 +93,7 @@ pub struct ToggleLockRotationArgs;
 
 #[derive(Args)]
 pub struct MonitorArgs {
-    /// The monitor to rotate depending on the accelerometer orientation. Defaults to the first monitor Niri can see.
+    /// The monitor to rotate depending on the accelerometer orientation.
     pub monitor: String,
 }
 
