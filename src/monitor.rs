@@ -1,22 +1,9 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
-use log::{debug, info};
-use niri_ipc::{socket::Socket, Output, OutputAction, Request, Response, Transform};
+use niri_ipc::{socket::Socket, Output, Request, Response};
 
-use crate::state::TransformMatrix;
-
-fn parse_orientation(orientation: &str, matrix: &TransformMatrix) -> Transform {
-    match orientation {
-        "normal" => matrix.normal,
-        "left-up" => matrix.left_up,
-        "bottom-up" => matrix.bottom_up,
-        "right-up" => matrix.right_up,
-        _ => matrix.normal,
-    }
-}
-
-fn get_monitors(socket: &mut Socket) -> Result<HashMap<String, Output>> {
+pub fn get_monitors(socket: &mut Socket) -> Result<HashMap<String, Output>> {
     match socket.send(Request::Outputs)? {
         Ok(it) => match it {
             Response::Outputs(outputs) => Ok(outputs),
@@ -32,10 +19,7 @@ pub fn get_monitor(socket: &mut Socket, arg_monitor: Option<String>) -> Result<S
     match arg_monitor {
         Some(mon) => {
             if !outputs.keys().any(|key| *key == mon) {
-                return Err(anyhow!(format!(
-                    "The provided monitor ({}) is not connected.",
-                    mon
-                )));
+                return Err(anyhow!("The provided monitor ({}) is not connected.", mon));
             }
             Ok(mon.to_owned())
         }
@@ -44,54 +28,4 @@ pub fn get_monitor(socket: &mut Socket, arg_monitor: Option<String>) -> Result<S
             None => Err(anyhow!("Couldn't select the monitor to rotate.")),
         },
     }
-}
-
-pub fn update_orientation(
-    socket: &mut Socket,
-    monitor: &str,
-    orientation: &str,
-    matrix: &TransformMatrix,
-) -> Result<()> {
-    let orientation = parse_orientation(orientation, matrix);
-
-    let outputs = get_monitors(socket)?;
-
-    let old_orientation = match outputs.get(monitor) {
-        Some(output) => {
-            if let Some(logical) = output.logical {
-                logical.transform
-            } else {
-                return Err(anyhow!(format!(
-                    "Couldn't get the logical output information from the provided monitor ({}).",
-                    monitor
-                )));
-            }
-        }
-        None => {
-            return Err(anyhow!(format!(
-                "Couldn't find the provided monitor ({}) in the list of outputs.",
-                monitor
-            )));
-        }
-    };
-
-    if old_orientation == orientation {
-        return Ok(());
-    }
-
-    debug!("Updating screen orientation...");
-    if let Err(str) = socket.send(Request::Output {
-        output: monitor.to_owned(),
-        action: OutputAction::Transform {
-            transform: orientation,
-        },
-    })? {
-        return Err(anyhow!(str));
-    };
-    info!(
-        "Updated orientation from {:?} to {:?}.",
-        old_orientation, orientation
-    );
-
-    Ok(())
 }

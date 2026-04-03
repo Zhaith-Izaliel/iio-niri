@@ -1,6 +1,8 @@
 use std::{
+    fs,
     io::Read,
     os::unix::net::{UnixListener, UnixStream},
+    sync::{Arc, Mutex},
 };
 
 use anyhow::{anyhow, Result};
@@ -40,6 +42,13 @@ pub struct Socket {
     path: String,
 }
 
+pub fn destroy_socket(path: &str) -> Result<()> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(e) => Err(anyhow!("Couldn't not destroy socket:\n {}", e)),
+    }
+}
+
 impl Socket {
     pub fn bind(socket_path: Option<String>) -> Result<Self> {
         let path = match socket_path {
@@ -65,19 +74,26 @@ impl Socket {
         Ok(())
     }
 
-    pub fn process(&self, state: &mut State) {
-        for stream in self.socket.incoming() {
-            match stream {
-                Ok(mut stream) => {
-                    if let Err(e) = Self::handle_client(&mut stream, state) {
-                        error!("{}", e);
+    pub fn process(&self, state: Arc<Mutex<State>>) -> Result<()> {
+        match self.socket.accept() {
+            Ok(mut stream) => {
+                let mut state = match state.lock() {
+                    Ok(s) => s,
+                    Err(_) => {
+                        return Err(anyhow!(
+                            "Couldn't lock on state because the mutex was poisonned."
+                        ))
                     }
-                }
-                Err(err) => {
-                    error!("Couldn't connect to incoming stream: \n {}", err);
+                };
+                if let Err(e) = Self::handle_client(&mut stream.0, &mut state) {
+                    error!("{}", e);
                 }
             }
-        }
+            Err(err) => {
+                error!("Couldn't connect to incoming stream: \n {}", err);
+            }
+        };
+        Ok(())
     }
 
     pub fn get_path(&self) -> String {

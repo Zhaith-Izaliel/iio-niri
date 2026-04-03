@@ -36,7 +36,6 @@ enum StateChange {
     ToggleLockRotation(),
     Monitor(String),
     Transform(TransformMatrix),
-    Timeout(u64),
 }
 
 impl FromStr for StateChange {
@@ -64,17 +63,6 @@ impl FromStr for StateChange {
                 Ok(Self::LockRotation(lr))
             }
             "toggle_lock_rotation" => Ok(Self::ToggleLockRotation()),
-            "timeout" => {
-                let timeout = match tokens.1.parse::<u64>() {
-                    Ok(a) => a,
-                    Err(_) => {
-                        return Err(anyhow!(
-                            "Couldn't parse integer value for `timeout` message"
-                        ));
-                    }
-                };
-                Ok(Self::Timeout(timeout))
-            }
             "transform" => {
                 let transforms = tokens
                     .1
@@ -116,23 +104,19 @@ pub struct State {
     /// - bottom-up -> 180
     /// - right-up -> 270
     pub transform: TransformMatrix,
-
-    /// The number of milliseconds before timeout for a dbus request.
-    pub timeout: u64,
 }
 
 impl State {
-    pub fn from_args(niri_socket: &mut Socket, args: ListenArgs) -> Result<Self> {
-        let monitor = monitor::get_monitor(niri_socket, args.monitor)?;
+    pub fn from_args(niri_socket: &mut Socket, args: &ListenArgs) -> Result<Self> {
+        let monitor = monitor::get_monitor(niri_socket, args.monitor.to_owned())?;
         warn!("Using monitor {}.", monitor);
-        let transform = parse_transform_matrix(args.transform);
+        let transform = parse_transform_matrix(args.transform.to_owned());
         info!("Using transformation matrix {:?}.", transform);
 
         Ok(Self {
             lock_rotation: false,
             monitor,
             transform,
-            timeout: args.timeout,
         })
     }
 
@@ -144,7 +128,6 @@ impl State {
             StateChange::LockRotation(b) => self.lock_rotation = b,
             StateChange::ToggleLockRotation() => self.lock_rotation = !self.lock_rotation,
             StateChange::Transform(t) => self.transform = t,
-            StateChange::Timeout(t) => self.timeout = t,
         }
         debug!("State updated!");
         debug!("New state: {:?}", self);

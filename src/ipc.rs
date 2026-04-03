@@ -48,9 +48,6 @@ impl Client {
             MsgSubcommandArgs::Monitor(sub_command) => {
                 self.send(format!("monitor:{}", sub_command.monitor))
             }
-            MsgSubcommandArgs::Timeout(sub_command) => {
-                self.send(format!("timeout:{}", sub_command.timeout))
-            }
             MsgSubcommandArgs::Transform(sub_command) => self.send(format!(
                 "transform:{}",
                 sub_command.transform.iter().fold(String::new(), |acc, el| {

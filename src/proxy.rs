@@ -55,10 +55,3 @@ pub fn create_proxy<'a>(
     debug!("Accelerometer claimed.");
     Ok(proxy)
 }
-
-pub fn destroy_proxy(proxy: &Proxy<'_, &Connection>) -> Result<()> {
-    debug!("Releasing accelerometer...");
-    orientation::release_accelerometer(proxy)?;
-    debug!("Accelerometer released.");
-    Ok(())
-}

@@ -79,9 +79,6 @@ pub enum MsgSubcommandArgs {
 
     /// Change the transformation matrix.
     Transform(TransformArgs),
-
-    /// Change the timeout used in DBus requests.
-    Timeout(TimeoutArgs),
 }
 
 #[derive(Args)]
@@ -114,10 +111,4 @@ pub struct TransformArgs {
     /// - right-up -> 270
     #[clap(num_args = 4, verbatim_doc_comment)]
     pub transform: Vec<Transform>,
-}
-
-#[derive(Args)]
-pub struct TimeoutArgs {
-    /// The number of milliseconds before timeout for a dbus request.
-    pub timeout: u64,
 }
