@@ -1,13 +1,24 @@
-{iio-niri}: {
+{ iio-niri }:
+{
   config,
   lib,
   ...
-}: let
-  inherit (lib) mkEnableOption mkOption types mkIf getExe escapeShellArgs mkDefault;
+}:
+let
+  inherit (lib)
+    mkEnableOption
+    mkOption
+    types
+    mkIf
+    getExe
+    escapeShellArgs
+    mkDefault
+    ;
   cfg = config.services.iio-niri;
-in {
+in
+{
   # Avoid conflicts with nixpkgs, since IIO-Niri has been merged upstream
-  disabledModules = ["services/misc/iio-niri.nix"];
+  disabledModules = [ "services/misc/iio-niri.nix" ];
 
   options.services.iio-niri = {
     enable = mkEnableOption "IIO-Niri";
@@ -26,29 +37,29 @@ in {
 
     extraArgs = mkOption {
       type = types.listOf types.str;
-      default = [];
-      description = "Extra arguments to pass to IIO-Niri.";
+      default = [ ];
+      description = "Extra arguments to pass to IIO-Niri. Note that it is run with the subcommand `listen`, so the arguments must be arguments usable on `listen`.";
     };
   };
 
   config = mkIf cfg.enable {
     hardware.sensor.iio.enable = mkDefault true;
 
-    environment.systemPackages = [cfg.package];
+    environment.systemPackages = [ cfg.package ];
 
     systemd.user.services.iio-niri = {
       description = "IIO-Niri";
-      wantedBy = [cfg.niriUnit];
-      bindsTo = [cfg.niriUnit];
-      partOf = [cfg.niriUnit];
-      after = [cfg.niriUnit];
+      wantedBy = [ cfg.niriUnit ];
+      bindsTo = [ cfg.niriUnit ];
+      partOf = [ cfg.niriUnit ];
+      after = [ cfg.niriUnit ];
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${getExe cfg.package} ${escapeShellArgs cfg.extraArgs}";
+        ExecStart = "${getExe cfg.package} listen ${escapeShellArgs cfg.extraArgs}";
         Restart = "on-failure";
       };
     };
   };
 
-  meta.maintainers = with lib.maintainers; [zhaithizaliel];
+  meta.maintainers = with lib.maintainers; [ zhaithizaliel ];
 }
