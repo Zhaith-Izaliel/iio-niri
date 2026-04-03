@@ -131,12 +131,18 @@ fn handle_orientation(
     info!("Listening to accelerometer changes...");
     while !should_stop.load(Ordering::SeqCst) {
         let found_signal = dbus_connection.process(Duration::from_millis(timeout))?;
+        let mut orientation = orientation::get_orientation(&proxy)?;
         if found_signal {
             debug!("Found accelerometer's signal!");
 
             debug!("Getting orientation...");
-            let orientation = orientation::get_orientation(&proxy)?;
+            let new_orientation = orientation::get_orientation(&proxy)?;
             debug!("Orientation obtained.");
+
+            if new_orientation == orientation {
+                continue;
+            }
+            orientation = new_orientation;
 
             debug!("Locking on State...");
             let state = match state.lock() {
