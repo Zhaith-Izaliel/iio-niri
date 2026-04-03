@@ -2,7 +2,6 @@ use std::{
     fs,
     io::{ErrorKind, Read},
     os::unix::net::{UnixListener, UnixStream},
-    sync::{Arc, Mutex},
 };
 
 use anyhow::{anyhow, Result};
@@ -80,18 +79,10 @@ impl Socket {
         Ok(())
     }
 
-    pub fn process(&self, state: Arc<Mutex<State>>) -> Result<()> {
+    pub fn process(&self, state: &mut State) -> Result<()> {
         match self.socket.accept() {
             Ok(mut stream) => {
-                let mut state = match state.lock() {
-                    Ok(s) => s,
-                    Err(_) => {
-                        return Err(anyhow!(
-                            "Couldn't lock on state because the mutex was poisonned."
-                        ))
-                    }
-                };
-                if let Err(e) = Self::handle_client(&mut stream.0, &mut state) {
+                if let Err(e) = Self::handle_client(&mut stream.0, state) {
                     error!("{}", e);
                 }
             }

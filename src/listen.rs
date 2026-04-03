@@ -1,13 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use log::{debug, info, warn};
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
-    thread,
-    time::Duration,
-};
+use std::time::Duration;
 
 use signal_hook::{consts::TERM_SIGNALS, iterator::Signals};
 
@@ -28,10 +21,7 @@ pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Resul
     debug!("Niri socket bound!");
 
     debug!("Creating state...");
-    let state = Arc::new(Mutex::new(state::State::from_args(
-        &mut niri_socket,
-        &args,
-    )?));
+    let state = state::State::from_args(&mut niri_socket, &args)?;
     debug!("State created successfully!");
 
     debug!("Creating IIO-Niri socket...");
@@ -39,99 +29,30 @@ pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Resul
     let iio_niri_socket_path = iio_niri_socket.get_path();
     debug!("Socket created at {}", iio_niri_socket.get_path());
 
-    // Shouldn't return until the end.
-
-    let should_stop = Arc::new(AtomicBool::new(false));
-    debug!("Created threads stop condition.");
-
-    debug!("Creating all threads...");
-    let mut handles = Vec::with_capacity(2);
-
-    let ipc_should_stop = Arc::clone(&should_stop);
-    let ipc_state = Arc::clone(&state);
-    let handle_ipc = thread::spawn(move || {
-        let should_stop = Arc::clone(&ipc_should_stop);
-        let result = handle_ipc(ipc_should_stop, iio_niri_socket, ipc_state);
-        if result.is_err() {
-            should_stop.store(true, Ordering::SeqCst);
-        }
-        result
-    });
-    handles.push(handle_ipc);
-
-    let orientation_should_stop = Arc::clone(&should_stop);
-    let orientation_state = Arc::clone(&state);
-    let handle_orientation = thread::spawn(move || {
-        let should_stop = Arc::clone(&orientation_should_stop);
-        let result = handle_orientation(
-            orientation_should_stop,
-            orientation_state,
-            args.timeout,
-            niri_socket,
-        );
-        if result.is_err() {
-            should_stop.store(true, Ordering::SeqCst);
-        }
-        result
-    });
-    handles.push(handle_orientation);
-    debug!("All threads created...");
-
-    let mut signals = Signals::new(TERM_SIGNALS).unwrap();
-    while !should_stop.load(Ordering::SeqCst) {
-        for _ in signals.pending() {
-            warn!("The service was requested to stop.");
-            info!("Cleaning up threads...");
-            should_stop.store(true, Ordering::SeqCst);
-        }
-    }
-    signals.handle().close();
-
-    let mut final_result = Ok(());
-    for handle in handles {
-        let result = handle.join();
-        final_result = match result {
-            Ok(r) => {
-                if r.is_err() {
-                    r
-                } else {
-                    Ok(())
-                }
-            }
-            Err(_) => Err(anyhow!("Couldn't join thread.")),
-        }
-    }
-
-    // Can now return.
+    let final_result = handle_orientation(state, args.timeout, niri_socket, iio_niri_socket);
     socket::destroy_socket(&iio_niri_socket_path)?;
     final_result
 }
 
-fn handle_ipc(
-    should_stop: Arc<AtomicBool>,
-    iio_niri_socket: socket::Socket,
-    state: Arc<Mutex<state::State>>,
-) -> Result<()> {
-    while !should_stop.load(Ordering::SeqCst) {
-        iio_niri_socket.process(Arc::clone(&state))?;
-        thread::yield_now();
-    }
-    Ok(())
-}
-
 fn handle_orientation(
-    should_stop: Arc<AtomicBool>,
-    state: Arc<Mutex<state::State>>,
+    mut state: state::State,
     timeout: u64,
     mut niri_socket: socket::NiriSocket,
+    iio_niri_socket: socket::Socket,
 ) -> Result<()> {
     let dbus_connection = proxy::create_dbus_connection()?;
     let proxy = proxy::create_proxy(&dbus_connection, timeout)?;
 
+    let mut should_stop = false;
+    let mut signals = Signals::new(TERM_SIGNALS).unwrap();
+    let mut orientation = orientation::get_orientation(&proxy)?;
+
     info!("Listening to accelerometer changes...");
-    while !should_stop.load(Ordering::SeqCst) {
+    while !should_stop {
         let found_signal = dbus_connection.process(Duration::from_millis(timeout))?;
-        let mut orientation = orientation::get_orientation(&proxy)?;
+
+        iio_niri_socket.process(&mut state)?;
+
         if found_signal {
             debug!("Found accelerometer's signal!");
 
@@ -139,22 +60,7 @@ fn handle_orientation(
             let new_orientation = orientation::get_orientation(&proxy)?;
             debug!("Orientation obtained.");
 
-            if new_orientation == orientation {
-                continue;
-            }
-            orientation = new_orientation;
-
-            debug!("Locking on State...");
-            let state = match state.lock() {
-                Ok(s) => s,
-                Err(_) => {
-                    return Err(anyhow!(
-                        "Couldn't lock on state because the mutex was poisonned."
-                    ))
-                }
-            };
-            if !state.lock_rotation {
-                debug!("Lock acquired");
+            if !state.lock_rotation && new_orientation != orientation {
                 orientation::update_orientation(
                     &mut niri_socket,
                     &state.monitor, // Should fail
@@ -162,8 +68,15 @@ fn handle_orientation(
                     &state.transform,
                 )?;
             }
+            orientation = new_orientation;
         }
-        thread::yield_now();
+
+        // Process signals
+        for _ in signals.pending() {
+            warn!("The service was requested to stop.");
+            should_stop = true;
+        }
     }
+    signals.handle().close();
     Ok(())
 }
