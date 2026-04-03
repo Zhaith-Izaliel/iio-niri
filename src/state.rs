@@ -4,10 +4,15 @@ use anyhow::{anyhow, Result};
 use log::{debug, info, warn};
 use niri_ipc::{socket::Socket, Transform};
 
-use crate::{
-    app::{ListenArgs, TransformMatrix},
-    monitor,
-};
+use crate::{app::ListenArgs, monitor};
+
+#[derive(Debug, Clone)]
+pub struct TransformMatrix {
+    pub normal: Transform,
+    pub left_up: Transform,
+    pub bottom_up: Transform,
+    pub right_up: Transform,
+}
 
 fn parse_transform_matrix(transform: Option<Vec<Transform>>) -> TransformMatrix {
     match transform {
@@ -43,7 +48,8 @@ impl FromStr for StateChange {
         }
         let tokens = (tokens[0], tokens[1]);
 
-        match tokens.0 {
+        debug!("Parsing message with ({},{})", tokens.0, tokens.1);
+        let parsed = match tokens.0 {
             "monitor" => Ok(Self::Monitor(tokens.1.to_owned())),
             "lock_rotation" => {
                 let lr = match tokens.1.parse::<bool>() {
@@ -79,10 +85,13 @@ impl FromStr for StateChange {
                 }
             }
             _ => Err(anyhow!("Couldn't parse message: {}", s)),
-        }
+        };
+        debug!("Message successfully parsed!");
+        parsed
     }
 }
 
+#[derive(Clone)]
 pub struct State {
     /// Lock the rotation of the screen
     pub lock_rotation: bool,
@@ -104,37 +113,20 @@ pub struct State {
 
     /// The number of milliseconds before timeout for a dbus request.
     pub timeout: u64,
-
-    /// The path to the niri IPC socket.
-    pub niri_socket: Socket,
 }
 
 impl State {
-    pub fn from_args(args: ListenArgs) -> Result<Self> {
-        debug!("Creating state...");
-        let mut niri_socket = match args.niri_socket {
-            Some(path) => {
-                info!("Using socket at {}.", path);
-                Socket::connect_to(path)?
-            }
-            None => {
-                warn!("Using default socket.");
-                Socket::connect()?
-            }
-        };
-
-        let monitor = monitor::get_monitor(&mut niri_socket, args.monitor)?;
+    pub fn from_args(niri_socket: &mut Socket, args: ListenArgs) -> Result<Self> {
+        let monitor = monitor::get_monitor(niri_socket, args.monitor)?;
         warn!("Using monitor {}.", monitor);
         let transform = parse_transform_matrix(args.transform);
         info!("Using transformation matrix {:?}.", transform);
 
-        debug!("State created successfully!");
         Ok(Self {
             lock_rotation: false,
             monitor,
             transform,
             timeout: args.timeout,
-            niri_socket,
         })
     }
 

@@ -1,14 +1,6 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use niri_ipc::Transform;
-
-#[derive(Debug)]
-pub struct TransformMatrix {
-    pub normal: Transform,
-    pub left_up: Transform,
-    pub bottom_up: Transform,
-    pub right_up: Transform,
-}
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -71,7 +63,7 @@ pub struct ListenArgs {
 #[derive(Args)]
 pub struct MsgArgs {
     #[command(subcommand)]
-    command: MsgSubcommandArgs,
+    pub command: MsgSubcommandArgs,
 }
 
 #[derive(Subcommand)]
@@ -91,14 +83,15 @@ pub enum MsgSubcommandArgs {
 
 #[derive(Args)]
 pub struct LockRotationArgs {
-    /// Lock the rotation of the screen. If omitted, it toggles locking rotation or not
-    lock_rotation: Option<bool>,
+    /// Lock the rotation of the screen.
+    #[arg(action=ArgAction::Set)]
+    pub lock_rotation: bool,
 }
 
 #[derive(Args)]
 pub struct MonitorArgs {
     /// The monitor to rotate depending on the accelerometer orientation. Defaults to the first monitor Niri can see.
-    monitor: String,
+    pub monitor: String,
 }
 
 #[derive(Args)]
@@ -113,11 +106,11 @@ pub struct TransformArgs {
     /// - left-up -> normal
     /// - bottom-up -> 180
     /// - right-up -> 270
-    transform: Vec<Transform>,
+    pub transform: Vec<Transform>,
 }
 
 #[derive(Args)]
 pub struct TimeoutArgs {
     /// The number of milliseconds before timeout for a dbus request.
-    timeout: u64,
+    pub timeout: u64,
 }

@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use log::{debug, info};
 use niri_ipc::{socket::Socket, Output, OutputAction, Request, Response, Transform};
 
-use crate::app::TransformMatrix;
+use crate::state::TransformMatrix;
 
 fn parse_orientation(orientation: &str, matrix: &TransformMatrix) -> Transform {
     match orientation {
@@ -16,7 +16,7 @@ fn parse_orientation(orientation: &str, matrix: &TransformMatrix) -> Transform {
     }
 }
 
-fn get_outputs(socket: &mut Socket) -> Result<HashMap<String, Output>> {
+fn get_monitors(socket: &mut Socket) -> Result<HashMap<String, Output>> {
     match socket.send(Request::Outputs)? {
         Ok(it) => match it {
             Response::Outputs(outputs) => Ok(outputs),
@@ -26,10 +26,10 @@ fn get_outputs(socket: &mut Socket) -> Result<HashMap<String, Output>> {
     }
 }
 
-pub fn get_monitor(socket: &mut Socket, config_monitor: Option<String>) -> Result<String> {
-    let outputs = get_outputs(socket)?;
+pub fn get_monitor(socket: &mut Socket, arg_monitor: Option<String>) -> Result<String> {
+    let outputs = get_monitors(socket)?;
 
-    match config_monitor {
+    match arg_monitor {
         Some(mon) => {
             if !outputs.keys().any(|key| *key == mon) {
                 return Err(anyhow!(format!(
@@ -37,7 +37,7 @@ pub fn get_monitor(socket: &mut Socket, config_monitor: Option<String>) -> Resul
                     mon
                 )));
             }
-            Ok(mon)
+            Ok(mon.to_owned())
         }
         None => match outputs.keys().next() {
             Some(str) => Ok(str.to_owned()),
@@ -48,15 +48,15 @@ pub fn get_monitor(socket: &mut Socket, config_monitor: Option<String>) -> Resul
 
 pub fn update_orientation(
     socket: &mut Socket,
-    monitor: String,
+    monitor: &str,
     orientation: &str,
     matrix: &TransformMatrix,
 ) -> Result<()> {
     let orientation = parse_orientation(orientation, matrix);
 
-    let outputs = get_outputs(socket)?;
+    let outputs = get_monitors(socket)?;
 
-    let old_orientation = match outputs.get(&monitor) {
+    let old_orientation = match outputs.get(monitor) {
         Some(output) => {
             if let Some(logical) = output.logical {
                 logical.transform
