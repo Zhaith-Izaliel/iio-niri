@@ -1,12 +1,12 @@
 use std::{
     fs,
-    io::Read,
+    io::{ErrorKind, Read},
     os::unix::net::{UnixListener, UnixStream},
     sync::{Arc, Mutex},
 };
 
 use anyhow::{anyhow, Result};
-use log::error;
+use log::{debug, error};
 
 use crate::state::State;
 
@@ -43,6 +43,7 @@ pub struct Socket {
 }
 
 pub fn destroy_socket(path: &str) -> Result<()> {
+    debug!("Removing socket at {}", path);
     match fs::remove_file(path) {
         Ok(()) => Ok(()),
         Err(e) => Err(anyhow!("Couldn't not destroy socket:\n {}", e)),
@@ -57,7 +58,12 @@ impl Socket {
         };
 
         match UnixListener::bind(path.clone()) {
-            Ok(s) => Ok(Self { socket: s, path }),
+            Ok(s) => Ok({
+                if s.set_nonblocking(true).is_err() {
+                    return Err(anyhow!("Couldn't set the socket to non-blocking."));
+                }
+                Self { socket: s, path }
+            }),
             Err(e) => Err(anyhow!("Couldn't bind socket at {}: \n {}", path, e)),
         }
     }
@@ -90,7 +96,9 @@ impl Socket {
                 }
             }
             Err(err) => {
-                error!("Couldn't connect to incoming stream: \n {}", err);
+                if err.kind() != ErrorKind::WouldBlock {
+                    error!("Couldn't connect to incoming stream: \n {}", err);
+                }
             }
         };
         Ok(())

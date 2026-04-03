@@ -11,7 +11,7 @@ use std::{
 
 use signal_hook::{consts::TERM_SIGNALS, iterator::Signals};
 
-use crate::{app, monitor::update_orientation, orientation, proxy, socket, state};
+use crate::{app, orientation, proxy, socket, state};
 
 pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Result<()> {
     debug!("Binding Niri socket...");
@@ -79,7 +79,9 @@ pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Resul
 
     let mut signals = Signals::new(TERM_SIGNALS).unwrap();
     while !should_stop.load(Ordering::SeqCst) {
-        for _ in signals.forever() {
+        for _ in signals.pending() {
+            warn!("The service was requested to stop.");
+            info!("Cleaning up threads...");
             should_stop.store(true, Ordering::SeqCst);
         }
     }
@@ -112,6 +114,7 @@ fn handle_ipc(
 ) -> Result<()> {
     while !should_stop.load(Ordering::SeqCst) {
         iio_niri_socket.process(Arc::clone(&state))?;
+        thread::yield_now();
     }
     Ok(())
 }
@@ -146,7 +149,7 @@ fn handle_orientation(
             };
             if !state.lock_rotation {
                 debug!("Lock acquired");
-                update_orientation(
+                orientation::update_orientation(
                     &mut niri_socket,
                     &state.monitor, // Should fail
                     orientation.as_str(),
@@ -154,6 +157,7 @@ fn handle_orientation(
                 )?;
             }
         }
+        thread::yield_now();
     }
     Ok(())
 }
