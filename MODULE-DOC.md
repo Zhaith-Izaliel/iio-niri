@@ -1,6 +1,5 @@
 # NixOS Options Documentation
 
-This file highlights the documentation of every option provided by this flake's module.
 
 
 ## services\.iio-niri\.enable
@@ -40,7 +39,7 @@ package
 
 
 *Default:*
-` <derivation iio-niri-1.2.0> `
+` <derivation iio-niri-2.0.0> `
 
 
 
@@ -48,7 +47,7 @@ package
 
 
 
-Extra arguments to pass to IIO-Niri\.
+Extra arguments to pass to IIO-Niri\. Note that it is run with the subcommand ` listen `, so the arguments must be arguments usable on ` listen `\.
 
 
 

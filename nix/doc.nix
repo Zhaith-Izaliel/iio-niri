@@ -1,14 +1,15 @@
 {
   lib,
-  runCommandNoCC,
+  runCommand,
   nixosOptionsDoc,
   iio-niri,
-}: let
+}:
+let
   # evaluate our options
   eval = lib.evalModules {
     modules = [
-      {_module.check = false;}
-      (import ./module.nix {inherit iio-niri;})
+      { _module.check = false; }
+      (import ./module.nix { inherit iio-niri; })
     ];
   };
 
@@ -17,7 +18,7 @@
     inherit (eval) options;
   };
 in
-  # create a derivation for capturing the markdown output
-  runCommandNoCC "options-doc.md" {} ''
-    cat ${optionsDoc.optionsCommonMark} > $out
-  ''
+# create a derivation for capturing the markdown output
+runCommand "options-doc.md" { } ''
+  cat ${optionsDoc.optionsCommonMark} > $out
+''

@@ -95,16 +95,16 @@ Listen to IIO-Sensor-Proxy and updates Niri output orientation depending on the 
 ### Prerequisites
 
 IIO-Niri requires the Rust Compiler if you plan to compile it, you will also need Cargo to build the project and DBus dependencies.
-* `rustc` ⩾ 1.86.0
-* `cargo` ⩾ 1.86.0
+* `rustc` ⩾ 1.91.1
+* `cargo` ⩾ 1.91.1
 * `pkg-config` ⩾ 0.29.2
-* `libdbus` ⩾ 1.6
+* `libdbus` ⩾ 1.14.10
 
 At runtime, the program relies on [IIO-Sensor-Proxy][IIO-Sensor-Proxy-Url] to fetch updates on the accelerometer. Make sure it is running alongside IIO-Niri.
 
 If you intend to work with Nix:
 
-* `nix` ⩾ 2.28.4 with [flake support](https://wiki.nixos.org/wiki/Flake).
+* `nix` ⩾ 2.31.2 with [flake support](https://wiki.nixos.org/wiki/Flake).
 
 ### Installation
 
@@ -135,7 +135,7 @@ If you prefer, you can install it with the provided flake like so:
 1. Import the project in your flake inputs
    ```nix
    inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     iio-niri = {
       url = "github:Zhaith-Izaliel/iio-niri";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -187,7 +187,7 @@ At runtime, the program relies on [IIO-Sensor-Proxy][IIO-Sensor-Proxy-Url] to fe
 Then start IIO-Niri with Niri:
 
 ```kdl
-spawn-at-startup "iio-niri" "--monitor" "eDP-1"
+spawn-at-startup "iio-niri" "listen" "--monitor" "eDP-1"
 ```
 
 ### NixOS
