@@ -1,12 +1,12 @@
 use clap::Parser;
 use log::{error, info};
 
+mod accelerometer;
 mod app;
 mod ipc;
 mod listen;
 mod monitor;
 mod orientation;
-mod proxy;
 mod socket;
 mod state;
 

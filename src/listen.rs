@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -57,11 +57,12 @@ fn run_threads(
     debug!("Signal handler registered.");
 
     debug!("Registering Orientation handler...");
-    let orientation_handle = orientation::handle_orientation(
+    let orientation_handle = handle_orientation(
         Arc::clone(&state),
         timeout,
         niri_socket,
         Arc::clone(&should_stop),
+        signals_handles.0.clone(),
     );
     debug!("Orientation handler registered.");
 
@@ -70,6 +71,7 @@ fn run_threads(
         Arc::clone(&should_stop),
         Arc::clone(&state),
         iio_niri_socket,
+        signals_handles.0.clone(),
     );
     debug!("IPC handler registered.");
 
@@ -97,9 +99,11 @@ fn handle_ipc(
     should_stop: Arc<AtomicBool>,
     state: Arc<Mutex<state::State>>,
     iio_niri_socket: socket::Socket,
+    signals_handle: Handle,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
         iio_niri_socket.process(Arc::clone(&state), Arc::clone(&should_stop));
+        signals_handle.close();
     })
 }
 
@@ -116,11 +120,29 @@ fn handle_signals(should_stop: Arc<AtomicBool>) -> Result<(Handle, JoinHandle<()
             if should_stop.load(Ordering::Relaxed) {
                 warn!("The application was requested to stop.");
                 info!("Cleaning up threads before exiting...");
-                break;
             }
         }
     });
     Ok((handle, thread_handle))
 }
 
-// fn handle_ipc(should_stop: Arc<AtomicBool>) -> Result<JoinHandle<()>> {}
+fn handle_orientation(
+    state: Arc<Mutex<state::State>>,
+    timeout: u64,
+    niri_socket: socket::NiriSocket,
+    should_stop: Arc<AtomicBool>,
+    signals_handle: Handle,
+) -> JoinHandle<()> {
+    thread::spawn(move || {
+        if let Err(e) = orientation::change_orientation_routine(
+            state,
+            timeout,
+            niri_socket,
+            Arc::clone(&should_stop),
+        ) {
+            error!("{}", e);
+            should_stop.store(true, Ordering::Relaxed);
+        };
+        signals_handle.close();
+    })
+}

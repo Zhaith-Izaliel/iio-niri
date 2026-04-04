@@ -3,43 +3,26 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
-    thread::{self, JoinHandle},
     time::Duration,
 };
 
 use anyhow::{anyhow, Result};
-use log::{debug, error, info};
+use log::{debug, info};
 
-use dbus::blocking::{stdintf::org_freedesktop_dbus::Properties, Connection, Proxy};
+use dbus::blocking::stdintf::org_freedesktop_dbus::Properties;
 use niri_ipc::{socket::Socket, OutputAction, Request, Transform};
 
 use crate::{
+    accelerometer::{Accelerometer, INTERFACE},
     monitor,
-    proxy::{self, INTERFACE},
     state::{State, TransformMatrix},
 };
 
-pub fn claim_accelerometer(proxy: &Proxy<'_, &Connection>) -> Result<()> {
-    let result: Result<(), dbus::Error> = proxy.method_call(INTERFACE, "ClaimAccelerometer", ());
-
-    match result {
-        Ok(_) => Ok(()),
-        Err(err) => Err(anyhow!("Couldn't claim accelerometer:\n {}", err)),
-    }
-}
-
-pub fn has_accelerometer(proxy: &Proxy<'_, &Connection>) -> Result<bool> {
-    match proxy.get(INTERFACE, "HasAccelerometer") {
-        Ok(it) => Ok(it),
-        Err(err) => Err(anyhow!(
-            "Couldn't find the accelerometer on the current hardware:\n {}",
-            err
-        )),
-    }
-}
-
-pub fn get_orientation(proxy: &Proxy<'_, &Connection>) -> Result<String> {
-    let orientation: String = match proxy.get(INTERFACE, "AccelerometerOrientation") {
+pub fn get_orientation(accelerometer: &Accelerometer) -> Result<String> {
+    let orientation: String = match accelerometer
+        .proxy()
+        .get(INTERFACE, "AccelerometerOrientation")
+    {
         Ok(it) => it,
         Err(_) => return Err(anyhow!("Couldn't get accelerometer orientation.")),
     };
@@ -107,58 +90,48 @@ fn update_orientation(
     Ok(())
 }
 
-pub fn handle_orientation(
+pub fn change_orientation_routine(
     state: Arc<Mutex<State>>,
     timeout: u64,
     mut niri_socket: Socket,
     should_stop: Arc<AtomicBool>,
-) -> JoinHandle<()> {
-    let thread_handle = thread::spawn(move || {
-        let dbus_connection = match proxy::create_dbus_connection() {
-            Ok(c) => c,
-            Err(e) => return error!("{}", e),
-        };
-        let proxy = match proxy::create_proxy(&dbus_connection, timeout) {
-            Ok(p) => p,
-            Err(e) => return error!("{}", e),
-        };
+) -> Result<()> {
+    let accelerometer = Accelerometer::new(timeout)?;
 
-        info!("Listening to accelerometer changes...");
-        while !should_stop.load(Ordering::Relaxed) {
-            let found_signal = match dbus_connection.process(Duration::from_millis(timeout)) {
+    accelerometer.claim()?;
+
+    info!("Listening to accelerometer changes...");
+    while !should_stop.load(Ordering::Relaxed) {
+        let found_signal = accelerometer
+            .get_dbus_connection()
+            .process(Duration::from_millis(timeout))?;
+
+        if found_signal {
+            debug!("Found accelerometer's signal!");
+
+            debug!("Getting orientation...");
+            let orientation = get_orientation(&accelerometer)?;
+            debug!("Orientation obtained.");
+
+            let state = match state.lock() {
                 Ok(s) => s,
-                Err(e) => return error!("{}", e),
+                Err(_) => {
+                    return Err(anyhow!(
+                        "Couldn't lock on state because the data is poisonned."
+                    ));
+                }
             };
 
-            if found_signal {
-                debug!("Found accelerometer's signal!");
-
-                debug!("Getting orientation...");
-                let orientation = match get_orientation(&proxy) {
-                    Ok(o) => o,
-                    Err(e) => return error!("{}", e),
-                };
-                debug!("Orientation obtained.");
-
-                let state = match state.lock() {
-                    Ok(s) => s,
-                    Err(_) => {
-                        return error!("Couldn't lock on state because the data is poisonned.")
-                    }
-                };
-
-                if !state.lock_rotation {
-                    if let Err(e) = update_orientation(
-                        &mut niri_socket,
-                        &state.monitor, // Should fail
-                        orientation.as_str(),
-                        &state.transform,
-                    ) {
-                        return error!("{}", e);
-                    };
-                }
+            if !state.lock_rotation {
+                update_orientation(
+                    &mut niri_socket,
+                    &state.monitor, // Should fail
+                    orientation.as_str(),
+                    &state.transform,
+                )?;
             }
         }
-    });
-    thread_handle
+    }
+
+    accelerometer.release()
 }
