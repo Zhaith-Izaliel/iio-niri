@@ -1,8 +1,23 @@
-use crate::{monitor, proxy::INTERFACE, state::TransformMatrix};
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+    thread::{self, JoinHandle},
+    time::Duration,
+};
+
 use anyhow::{anyhow, Result};
+use log::{debug, error, info};
+
 use dbus::blocking::{stdintf::org_freedesktop_dbus::Properties, Connection, Proxy};
-use log::{debug, info};
 use niri_ipc::{socket::Socket, OutputAction, Request, Transform};
+
+use crate::{
+    monitor,
+    proxy::{self, INTERFACE},
+    state::{State, TransformMatrix},
+};
 
 pub fn claim_accelerometer(proxy: &Proxy<'_, &Connection>) -> Result<()> {
     let result: Result<(), dbus::Error> = proxy.method_call(INTERFACE, "ClaimAccelerometer", ());
@@ -42,7 +57,7 @@ fn parse_orientation(orientation: &str, matrix: &TransformMatrix) -> Transform {
     }
 }
 
-pub fn update_orientation(
+fn update_orientation(
     socket: &mut Socket,
     monitor: &str,
     orientation: &str,
@@ -90,4 +105,60 @@ pub fn update_orientation(
     );
 
     Ok(())
+}
+
+pub fn handle_orientation(
+    state: Arc<Mutex<State>>,
+    timeout: u64,
+    mut niri_socket: Socket,
+    should_stop: Arc<AtomicBool>,
+) -> JoinHandle<()> {
+    let thread_handle = thread::spawn(move || {
+        let dbus_connection = match proxy::create_dbus_connection() {
+            Ok(c) => c,
+            Err(e) => return error!("{}", e),
+        };
+        let proxy = match proxy::create_proxy(&dbus_connection, timeout) {
+            Ok(p) => p,
+            Err(e) => return error!("{}", e),
+        };
+
+        info!("Listening to accelerometer changes...");
+        while !should_stop.load(Ordering::Relaxed) {
+            let found_signal = match dbus_connection.process(Duration::from_millis(timeout)) {
+                Ok(s) => s,
+                Err(e) => return error!("{}", e),
+            };
+
+            if found_signal {
+                debug!("Found accelerometer's signal!");
+
+                debug!("Getting orientation...");
+                let orientation = match get_orientation(&proxy) {
+                    Ok(o) => o,
+                    Err(e) => return error!("{}", e),
+                };
+                debug!("Orientation obtained.");
+
+                let state = match state.lock() {
+                    Ok(s) => s,
+                    Err(_) => {
+                        return error!("Couldn't lock on state because the data is poisonned.")
+                    }
+                };
+
+                if !state.lock_rotation {
+                    if let Err(e) = update_orientation(
+                        &mut niri_socket,
+                        &state.monitor, // Should fail
+                        orientation.as_str(),
+                        &state.transform,
+                    ) {
+                        return error!("{}", e);
+                    };
+                }
+            }
+        }
+    });
+    thread_handle
 }

@@ -1,7 +1,11 @@
 use std::{
     fs,
-    io::{ErrorKind, Read},
+    io::Read,
     os::unix::net::{UnixListener, UnixStream},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
 };
 
 use anyhow::{anyhow, Result};
@@ -57,17 +61,12 @@ impl Socket {
         };
 
         match UnixListener::bind(path.clone()) {
-            Ok(s) => Ok({
-                if s.set_nonblocking(true).is_err() {
-                    return Err(anyhow!("Couldn't set the socket to non-blocking."));
-                }
-                Self { socket: s, path }
-            }),
+            Ok(s) => Ok(Self { socket: s, path }),
             Err(e) => Err(anyhow!("Couldn't bind socket at {}: \n {}", path, e)),
         }
     }
 
-    fn handle_client(stream: &mut UnixStream, state: &mut State) -> Result<()> {
+    fn handle_client(stream: &mut UnixStream, state: Arc<Mutex<State>>) -> Result<()> {
         let mut buffer = String::new();
         if let Err(e) = stream.read_to_string(&mut buffer) {
             return Err(anyhow!(
@@ -75,24 +74,34 @@ impl Socket {
                 e
             ));
         };
+        let mut state = match state.lock() {
+            Ok(s) => s,
+            Err(_) => {
+                return Err(anyhow!(
+                    "Couldn't lock on state because the value is poisonned."
+                ))
+            }
+        };
         state.update_with_message(buffer.as_str())?;
         Ok(())
     }
 
-    pub fn process(&self, state: &mut State) -> Result<()> {
-        match self.socket.accept() {
-            Ok(mut stream) => {
-                if let Err(e) = Self::handle_client(&mut stream.0, state) {
-                    error!("{}", e);
-                }
+    pub fn process(&self, state: Arc<Mutex<State>>, should_stop: Arc<AtomicBool>) {
+        for stream in self.socket.incoming() {
+            if should_stop.load(Ordering::Relaxed) {
+                return;
             }
-            Err(err) => {
-                if err.kind() != ErrorKind::WouldBlock {
+            match stream {
+                Ok(mut stream) => {
+                    if let Err(e) = Self::handle_client(&mut stream, Arc::clone(&state)) {
+                        error!("{}", e);
+                    }
+                }
+                Err(err) => {
                     error!("Couldn't connect to incoming stream: \n {}", err);
                 }
             }
-        };
-        Ok(())
+        }
     }
 
     pub fn get_path(&self) -> String {

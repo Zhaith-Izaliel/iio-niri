@@ -1,10 +1,17 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use log::{debug, info, warn};
-use std::time::Duration;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+    thread::{self, JoinHandle},
+};
 
-use signal_hook::{consts::TERM_SIGNALS, iterator::Signals};
+use signal_hook::iterator::Signals;
+use signal_hook::{consts::TERM_SIGNALS, iterator::Handle};
 
-use crate::{app, orientation, proxy, socket, state};
+use crate::{app, ipc, orientation, socket, state};
 
 pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Result<()> {
     debug!("Binding Niri socket...");
@@ -29,54 +36,91 @@ pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Resul
     let iio_niri_socket_path = iio_niri_socket.get_path();
     debug!("Socket created at {}", iio_niri_socket.get_path());
 
-    let final_result = handle_orientation(state, args.timeout, niri_socket, iio_niri_socket);
+    let final_result = run_threads(state, args.timeout, niri_socket, iio_niri_socket);
     socket::destroy_socket(&iio_niri_socket_path)?;
     final_result
 }
 
-fn handle_orientation(
-    mut state: state::State,
+fn run_threads(
+    state: state::State,
     timeout: u64,
-    mut niri_socket: socket::NiriSocket,
+    niri_socket: socket::NiriSocket,
     iio_niri_socket: socket::Socket,
 ) -> Result<()> {
-    let dbus_connection = proxy::create_dbus_connection()?;
-    let proxy = proxy::create_proxy(&dbus_connection, timeout)?;
+    debug!("Creating all threads...");
+    let should_stop = Arc::new(AtomicBool::new(false));
+    let state = Arc::new(Mutex::new(state));
+    let socket_path = iio_niri_socket.get_path();
 
-    let mut should_stop = false;
-    let mut signals = Signals::new(TERM_SIGNALS).unwrap();
-    let mut orientation = orientation::get_orientation(&proxy)?;
+    debug!("Registering signal handler...");
+    let signals_handles = handle_signals(Arc::clone(&should_stop))?;
+    debug!("Signal handler registered.");
 
-    info!("Listening to accelerometer changes...");
-    while !should_stop {
-        let found_signal = dbus_connection.process(Duration::from_millis(timeout))?;
+    debug!("Registering Orientation handler...");
+    let orientation_handle = orientation::handle_orientation(
+        Arc::clone(&state),
+        timeout,
+        niri_socket,
+        Arc::clone(&should_stop),
+    );
+    debug!("Orientation handler registered.");
 
-        iio_niri_socket.process(&mut state)?;
+    debug!("Registering IPC handler...");
+    let ipc_handle = handle_ipc(
+        Arc::clone(&should_stop),
+        Arc::clone(&state),
+        iio_niri_socket,
+    );
+    debug!("IPC handler registered.");
 
-        if found_signal {
-            debug!("Found accelerometer's signal!");
-
-            debug!("Getting orientation...");
-            let new_orientation = orientation::get_orientation(&proxy)?;
-            debug!("Orientation obtained.");
-
-            if !state.lock_rotation && new_orientation != orientation {
-                orientation::update_orientation(
-                    &mut niri_socket,
-                    &state.monitor, // Should fail
-                    orientation.as_str(),
-                    &state.transform,
-                )?;
-            }
-            orientation = new_orientation;
-        }
-
-        // Process signals
-        for _ in signals.pending() {
-            warn!("The service was requested to stop.");
-            should_stop = true;
-        }
+    debug!("All threads running.");
+    if signals_handles.1.join().is_err() {
+        return Err(anyhow!("Couldn't join signal thread."));
     }
-    signals.handle().close();
+    signals_handles.0.close();
+    if orientation_handle.join().is_err() {
+        return Err(anyhow!("Couldn't join orientation thread."));
+    }
+
+    if should_stop.load(Ordering::Relaxed) {
+        let client = ipc::Client::bind(Some(socket_path));
+        client.send(String::from("wake"))?; // Used to wake the IPC thread for clean up.
+    }
+
+    if ipc_handle.join().is_err() {
+        return Err(anyhow!("Couldn't join IPC thread."));
+    }
     Ok(())
 }
+
+fn handle_ipc(
+    should_stop: Arc<AtomicBool>,
+    state: Arc<Mutex<state::State>>,
+    iio_niri_socket: socket::Socket,
+) -> JoinHandle<()> {
+    thread::spawn(move || {
+        iio_niri_socket.process(Arc::clone(&state), Arc::clone(&should_stop));
+    })
+}
+
+fn handle_signals(should_stop: Arc<AtomicBool>) -> Result<(Handle, JoinHandle<()>)> {
+    let mut signals = match Signals::new(TERM_SIGNALS) {
+        Ok(s) => s,
+        Err(e) => return Err(anyhow!(e)),
+    };
+
+    let handle = signals.handle();
+    let thread_handle = thread::spawn(move || {
+        for _ in signals.forever() {
+            should_stop.store(true, Ordering::Relaxed);
+            if should_stop.load(Ordering::Relaxed) {
+                warn!("The application was requested to stop.");
+                info!("Cleaning up threads before exiting...");
+                break;
+            }
+        }
+    });
+    Ok((handle, thread_handle))
+}
+
+// fn handle_ipc(should_stop: Arc<AtomicBool>) -> Result<JoinHandle<()>> {}

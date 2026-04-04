@@ -1,5 +1,5 @@
 use clap::Parser;
-use log::error;
+use log::{error, info};
 
 mod app;
 mod ipc;
@@ -24,6 +24,7 @@ fn main() {
         }
     };
 
+    info!("Exiting!");
     match response {
         Ok(()) => (),
         Err(e) => {
