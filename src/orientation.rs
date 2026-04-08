@@ -15,7 +15,7 @@ use niri_ipc::{socket::Socket, OutputAction, Request, Transform};
 use crate::{
     accelerometer::{Accelerometer, INTERFACE},
     monitor,
-    state::{State, TransformMatrix},
+    state::{State, TransformMapping},
 };
 
 pub fn get_orientation(accelerometer: &Accelerometer) -> Result<String> {
@@ -30,13 +30,13 @@ pub fn get_orientation(accelerometer: &Accelerometer) -> Result<String> {
     Ok(orientation)
 }
 
-fn parse_orientation(orientation: &str, matrix: &TransformMatrix) -> Transform {
+fn parse_orientation(orientation: &str, mapping: &TransformMapping) -> Transform {
     match orientation {
-        "normal" => matrix.normal,
-        "left-up" => matrix.left_up,
-        "bottom-up" => matrix.bottom_up,
-        "right-up" => matrix.right_up,
-        _ => matrix.normal,
+        "normal" => mapping.normal,
+        "left-up" => mapping.left_up,
+        "bottom-up" => mapping.bottom_up,
+        "right-up" => mapping.right_up,
+        _ => mapping.normal,
     }
 }
 
@@ -44,7 +44,7 @@ fn update_orientation(
     socket: &mut Socket,
     monitor: &str,
     orientation: &str,
-    matrix: &TransformMatrix,
+    matrix: &TransformMapping,
 ) -> Result<()> {
     let orientation = parse_orientation(orientation, matrix);
 
@@ -127,7 +127,7 @@ pub fn change_orientation_routine(
                     &mut niri_socket,
                     &state.monitor, // Should fail
                     orientation.as_str(),
-                    &state.transform,
+                    &state.mapping,
                 )?;
             }
         }

@@ -7,7 +7,6 @@ mod ipc;
 mod listen;
 mod monitor;
 mod orientation;
-mod socket;
 mod state;
 
 fn main() {
@@ -18,13 +17,13 @@ fn main() {
 
     let response = match args.command {
         app::Commands::Listen(listen_args) => listen::run(listen_args, args.socket),
-        app::Commands::Msg(msg_args) => {
-            let client = ipc::Client::bind(args.socket);
-            client.send_from_args(msg_args)
-        }
+        app::Commands::Msg(msg_args) => match ipc::Client::bind(args.socket) {
+            Ok(mut client) => client.send_from_args(msg_args),
+            Err(e) => Err(e),
+        },
     };
 
-    info!("Exiting!");
+    info!("Exiting.");
     match response {
         Ok(()) => (),
         Err(e) => {

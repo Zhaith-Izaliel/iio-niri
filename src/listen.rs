@@ -11,18 +11,18 @@ use std::{
 use signal_hook::iterator::Signals;
 use signal_hook::{consts::TERM_SIGNALS, iterator::Handle};
 
-use crate::{app, ipc, orientation, socket, state};
+use crate::{app, ipc, orientation, state};
 
 pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Result<()> {
     debug!("Binding Niri socket...");
     let mut niri_socket = match &args.niri_socket {
         Some(path) => {
             info!("Using Niri socket at {}.", path);
-            socket::NiriSocket::connect_to(path)?
+            ipc::NiriSocket::connect_to(path)?
         }
         None => {
             warn!("Using default Niri socket.");
-            socket::NiriSocket::connect()?
+            ipc::NiriSocket::connect()?
         }
     };
     debug!("Niri socket bound!");
@@ -32,25 +32,22 @@ pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Resul
     debug!("State created successfully!");
 
     debug!("Creating IIO-Niri socket...");
-    let iio_niri_socket = socket::Socket::bind(iio_niri_socket_path)?;
-    let iio_niri_socket_path = iio_niri_socket.get_path();
+    let iio_niri_socket = ipc::IioNiriSocket::bind(iio_niri_socket_path)?;
     debug!("Socket created at {}", iio_niri_socket.get_path());
 
-    let final_result = run_threads(state, args.timeout, niri_socket, iio_niri_socket);
-    socket::destroy_socket(&iio_niri_socket_path)?;
-    final_result
+    run_threads(state, args.timeout, niri_socket, iio_niri_socket)
 }
 
 fn run_threads(
     state: state::State,
     timeout: u64,
-    niri_socket: socket::NiriSocket,
-    iio_niri_socket: socket::Socket,
+    niri_socket: ipc::NiriSocket,
+    iio_niri_socket: ipc::IioNiriSocket,
 ) -> Result<()> {
     debug!("Creating all threads...");
     let should_stop = Arc::new(AtomicBool::new(false));
     let state = Arc::new(Mutex::new(state));
-    let socket_path = iio_niri_socket.get_path();
+    let socket_path = iio_niri_socket.get_path().to_string();
 
     debug!("Registering signal handler...");
     let signals_handles = handle_signals(Arc::clone(&should_stop))?;
@@ -85,8 +82,12 @@ fn run_threads(
     }
 
     if should_stop.load(Ordering::Relaxed) {
-        let client = ipc::Client::bind(Some(socket_path));
-        client.send(String::from("wake"))?; // Used to wake the IPC thread for clean up.
+        match ipc::Client::bind(Some(socket_path)) {
+            Ok(mut client) => {
+                client.send(ipc::IpcAction::Stop())?; // Used to wake the IPC thread for clean up.
+            }
+            Err(e) => return Err(e),
+        }
     }
 
     if ipc_handle.join().is_err() {
@@ -98,12 +99,15 @@ fn run_threads(
 fn handle_ipc(
     should_stop: Arc<AtomicBool>,
     state: Arc<Mutex<state::State>>,
-    iio_niri_socket: socket::Socket,
+    iio_niri_socket: ipc::IioNiriSocket,
     signals_handle: Handle,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
         iio_niri_socket.process(Arc::clone(&state), Arc::clone(&should_stop));
         signals_handle.close();
+        if let Err(e) = iio_niri_socket.destroy_socket() {
+            error!("{}", e);
+        }
     })
 }
 
@@ -118,10 +122,11 @@ fn handle_signals(should_stop: Arc<AtomicBool>) -> Result<(Handle, JoinHandle<()
         for _ in signals.forever() {
             should_stop.store(true, Ordering::Relaxed);
             if should_stop.load(Ordering::Relaxed) {
-                warn!("The application was requested to stop.");
-                info!("Cleaning up threads before exiting...");
+                break;
             }
         }
+        warn!("The application was requested to stop.");
+        info!("Cleaning up threads before exiting...");
     });
     Ok((handle, thread_handle))
 }
@@ -129,7 +134,7 @@ fn handle_signals(should_stop: Arc<AtomicBool>) -> Result<(Handle, JoinHandle<()
 fn handle_orientation(
     state: Arc<Mutex<state::State>>,
     timeout: u64,
-    niri_socket: socket::NiriSocket,
+    niri_socket: ipc::NiriSocket,
     should_stop: Arc<AtomicBool>,
     signals_handle: Handle,
 ) -> JoinHandle<()> {

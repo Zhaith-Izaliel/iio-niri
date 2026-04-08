@@ -77,8 +77,17 @@ pub enum MsgSubcommandArgs {
     /// Change the monitor to rotate with the accelerometer orientation.
     Monitor(MonitorArgs),
 
-    /// Change the transformation matrix.
+    /// Change the transformation mapping.
     Transform(TransformArgs),
+
+    /// Ping IIO-Niri to know if its listening for request on its IPC
+    Ping(PingArgs),
+
+    /// Stop IIO-Niri
+    Stop(StopArgs),
+
+    /// Print IIO-Niri's current state
+    PrintState(PrintStateArgs),
 }
 
 #[derive(Args)]
@@ -90,6 +99,15 @@ pub struct LockRotationArgs {
 
 #[derive(Args)]
 pub struct ToggleLockRotationArgs;
+
+#[derive(Args)]
+pub struct PingArgs;
+
+#[derive(Args)]
+pub struct StopArgs;
+
+#[derive(Args)]
+pub struct PrintStateArgs;
 
 #[derive(Args)]
 pub struct MonitorArgs {
