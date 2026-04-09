@@ -23,6 +23,10 @@ pub enum Commands {
     Listen(ListenArgs),
 
     /// Send a command to a running instance of IIO-Niri
+    ///
+    /// Each request is a JSON request in the form `{"action": <action string>, "arg": <arg (can be null)>}`.
+    ///
+    /// Each request has a different response when it succeeds, however the error response is always the same, in the form `{"status": "error", "response": <message>}`.
     Msg(MsgArgs),
 }
 
@@ -69,24 +73,38 @@ pub struct MsgArgs {
 #[derive(Subcommand)]
 pub enum MsgSubcommandArgs {
     /// Lock the rotation of the screen.
+    ///
+    /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = <old_value>`
     LockRotation(LockRotationArgs),
 
-    /// Toggle locking rotation
+    /// Toggle locking rotation.
+    ///
+    /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = <old_value>`
     ToggleLockRotation(ToggleLockRotationArgs),
 
     /// Change the monitor to rotate with the accelerometer orientation.
+    ///
+    /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = <old_value>`
     Monitor(MonitorArgs),
 
     /// Change the transformation mapping.
+    ///
+    /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = <old_value>`
     Transform(TransformArgs),
 
-    /// Ping IIO-Niri to know if its listening for request on its IPC
+    /// Ping IIO-Niri to know if its listening for request on its IPC.
+    ///
+    /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = "Pong!"`
     Ping(PingArgs),
 
-    /// Stop IIO-Niri
+    /// Stop IIO-Niri.
+    ///
+    /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = "Stopping!"`
     Stop(StopArgs),
 
-    /// Print IIO-Niri's current state
+    /// Print IIO-Niri's current state.
+    ///
+    /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = <current state as a JSON object>`.
     PrintState(PrintStateArgs),
 }
 

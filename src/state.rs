@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use anyhow::Result;
 use log::{info, warn};
 use niri_ipc::{socket::Socket, Transform};
@@ -28,6 +30,16 @@ impl TransformMapping {
                 right_up: Transform::_270,
             },
         }
+    }
+}
+
+impl Display for TransformMapping {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = match serde_json::to_string(self) {
+            Ok(s) => s,
+            Err(_) => return Err(std::fmt::Error),
+        };
+        write!(f, "{}", string)
     }
 }
 

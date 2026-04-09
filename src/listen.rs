@@ -81,7 +81,7 @@ fn run_threads(
         return Err(anyhow!("Couldn't join orientation thread."));
     }
 
-    if should_stop.load(Ordering::Relaxed) {
+    if should_stop.load(Ordering::Relaxed) && std::fs::exists(&socket_path).unwrap_or_default() {
         match ipc::Client::bind(Some(socket_path)) {
             Ok(mut client) => {
                 client.send(ipc::IpcAction::Stop())?; // Used to wake the IPC thread for clean up.

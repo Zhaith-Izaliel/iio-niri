@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::{ErrorKind, Read, Write},
+    io::{BufRead, BufReader, Write},
     os::unix::net::{UnixListener, UnixStream},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -199,8 +199,12 @@ impl Socket {
         should_stop: Arc<AtomicBool>,
     ) -> Result<()> {
         let mut buffer = String::new();
+        let mut reader = BufReader::new(match stream.try_clone() {
+            Ok(s) => s,
+            Err(e) => return Err(anyhow!("Couldn't create Read Buffer: {}", e)),
+        });
         debug!("Reading request from client...");
-        if let Err(e) = stream.read_to_string(&mut buffer) {
+        if let Err(e) = reader.read_line(&mut buffer) {
             return Err(anyhow!(
                 "Couldn't read message from incoming stream: \n {}",
                 e
@@ -236,7 +240,7 @@ impl Socket {
         };
         debug!("Response constructed: {}", response);
 
-        let res = match stream.write_all(response.as_bytes()) {
+        let res = match stream.write_all(format!("{}\n", response).as_bytes()) {
             Ok(()) => Ok(()),
             Err(e) => Err(anyhow!("Couldn't write a response to the stream: {}", e)),
         };
@@ -257,6 +261,10 @@ impl Socket {
             IpcAction::LockRotation(b) => {
                 let old = state.lock_rotation;
                 state.lock_rotation = b;
+                debug!(
+                    "Changing `state.lock_rotation`. Old value: `{}`, New value: `{}`",
+                    old, b
+                );
                 let response = match serde_json::to_string(&Response::new(String::from("ok"), old))
                 {
                     Ok(s) => s,
@@ -267,6 +275,10 @@ impl Socket {
             IpcAction::ToggleLockRotation() => {
                 let old = state.lock_rotation;
                 state.lock_rotation = !state.lock_rotation;
+                debug!(
+                    "Changing `state.lock_rotation`. Old value: `{}`, New value: `{}`",
+                    old, state.lock_rotation
+                );
                 let response = match serde_json::to_string(&Response::new(String::from("ok"), old))
                 {
                     Ok(s) => s,
@@ -277,6 +289,10 @@ impl Socket {
             IpcAction::ChangeMonitor(monitor) => {
                 let old = state.monitor.clone();
                 state.monitor = monitor.clone();
+                debug!(
+                    "Changing `state.monitor`. Old value: `{}`, New value: `{}`",
+                    old, monitor
+                );
                 let response = match serde_json::to_string(&Response::new(String::from("ok"), old))
                 {
                     Ok(s) => s,
@@ -287,6 +303,10 @@ impl Socket {
             IpcAction::ChangeTransform(mapping) => {
                 let old = state.mapping.clone();
                 state.mapping = mapping.clone();
+                debug!(
+                    "Changing `state.mapping`. Old value: `{}`, New value: `{}`",
+                    old, mapping
+                );
                 let response = match serde_json::to_string(&Response::new(String::from("ok"), old))
                 {
                     Ok(s) => s,
@@ -306,6 +326,7 @@ impl Socket {
             }
             IpcAction::Stop() => {
                 should_stop.store(true, Ordering::Relaxed);
+                debug!("Stopping the listener...");
                 let response = match serde_json::to_string(&Response::new(
                     String::from("ok"),
                     String::from("Stopping!"),
@@ -375,7 +396,7 @@ impl Client {
         debug!("Writing request to client: {}", request.to_json());
         if let Err(e) = self
             .connection
-            .write_all(request.to_json().to_string().as_bytes())
+            .write_all(format!("{}\n", request.to_json()).as_bytes())
         {
             return Err(anyhow!("Couldn't write message to the stream: \n {}", e));
         }
@@ -388,16 +409,14 @@ impl Client {
         debug!("Stream flushed.");
 
         let mut response = String::new();
-        loop {
-            match self.connection.read_to_string(&mut response) {
-                Ok(_) => return Ok(response),
-                Err(e) => {
-                    if e.kind() == ErrorKind::WouldBlock {
-                        continue;
-                    }
-                    return Err(anyhow!("{}", e));
-                }
-            };
+
+        let mut reader = BufReader::new(match self.connection.try_clone() {
+            Ok(s) => s,
+            Err(e) => return Err(anyhow!("Couldn't create Read Buffer: {}", e)),
+        });
+        match reader.read_line(&mut response) {
+            Ok(_) => Ok(response),
+            Err(e) => Err(anyhow!("{}", e)),
         }
     }
 
