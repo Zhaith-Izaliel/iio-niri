@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::Parser;
 use log::{error, info};
 
@@ -9,7 +10,7 @@ mod monitor;
 mod orientation;
 mod state;
 
-fn main() {
+fn main() -> Result<()> {
     let args = app::App::parse();
     env_logger::Builder::new()
         .filter_level(args.verbosity.into())
@@ -25,9 +26,10 @@ fn main() {
 
     info!("Exiting.");
     match response {
-        Ok(()) => (),
+        Ok(()) => Ok(()),
         Err(e) => {
             error!("{}", e);
+            Err(e)
         }
     }
 }
