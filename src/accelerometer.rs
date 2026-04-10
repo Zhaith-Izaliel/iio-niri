@@ -77,7 +77,7 @@ impl Accelerometer {
                 Ok(())
             }
             Err(err) => Err(anyhow!(format!(
-                "Couldn't release accelerometer:\n {}",
+                "Couldn't release accelerometer:\n{}",
                 err
             ))),
         }
@@ -94,7 +94,7 @@ impl Accelerometer {
                 debug!("Accelerometer claimed.");
                 Ok(())
             }
-            Err(err) => Err(anyhow!("Couldn't claim accelerometer:\n {}", err)),
+            Err(err) => Err(anyhow!("Couldn't claim accelerometer:\n{}", err)),
         }
     }
 

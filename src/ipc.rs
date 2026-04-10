@@ -22,7 +22,7 @@ fn get_iio_niri_socket_directory() -> String {
     match std::env::var("XDG_RUNTIME_DIR") {
         Ok(val) => val,
         Err(e) => {
-            error!("Couldn't get XDG_RUNTIME_DIR:\n {}", e);
+            error!("Couldn't get XDG_RUNTIME_DIR:\n{}", e);
             String::from("/tmp")
         }
     }
@@ -36,7 +36,7 @@ pub fn get_iio_niri_socket_path() -> String {
         match wayland_display {
             Ok(val) => val,
             Err(e) => {
-                error!("Couldn't get WAYLAND_DISPLAY: \n {}", e);
+                error!("Couldn't get WAYLAND_DISPLAY: \n{}", e);
                 String::from("unknown")
             }
         }
@@ -190,7 +190,7 @@ impl Socket {
 
         match UnixListener::bind(path.clone()) {
             Ok(s) => Ok(Self { socket: s, path }),
-            Err(e) => Err(anyhow!("Couldn't bind socket at {}: \n {}", path, e)),
+            Err(e) => Err(anyhow!("Couldn't bind socket at {}: \n{}", path, e)),
         }
     }
 
@@ -343,7 +343,7 @@ impl Socket {
                         error!("{}", e);
                     }
                 }
-                Err(err) => error!("Couldn't connect to incoming stream: \n {}", err),
+                Err(err) => error!("Couldn't connect to incoming stream: \n{}", err),
             }
         }
     }
@@ -356,7 +356,7 @@ impl Socket {
         debug!("Removing socket at {}", self.path);
         match fs::remove_file(&self.path) {
             Ok(()) => Ok(()),
-            Err(e) => Err(anyhow!("Couldn't not destroy socket:\n {}", e)),
+            Err(e) => Err(anyhow!("Couldn't not destroy socket:\n{}", e)),
         }
     }
 }
@@ -385,7 +385,7 @@ impl Client {
         };
         let connection = match UnixStream::connect(&path) {
             Ok(conn) => conn,
-            Err(e) => return Err(anyhow!("Couldn't connect to socket {}:\n {}", &path, e)),
+            Err(e) => return Err(anyhow!("Couldn't connect to socket {}:\n{}", &path, e)),
         };
         let buffers = Self::create_buffers(&connection)?;
         Ok(Self {
@@ -404,7 +404,7 @@ impl Client {
 
     pub fn send(&mut self, message: String) -> Result<()> {
         if let Err(e) = self.writer.write_all(format!("{}\n", message).as_bytes()) {
-            return Err(anyhow!("Couldn't write message to the stream:\n {}", e));
+            return Err(anyhow!("Couldn't write message to the stream:\n{}", e));
         }
         match self.writer.flush() {
             Ok(_) => Ok(()),
@@ -417,7 +417,7 @@ impl Client {
 
         match self.reader.read_line(&mut message) {
             Ok(_) => Ok(String::from(message.trim())),
-            Err(e) => Err(anyhow!("Couldn't read message from the stream:\n {}", e)),
+            Err(e) => Err(anyhow!("Couldn't read message from the stream:\n{}", e)),
         }
     }
 
