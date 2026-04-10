@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, BufWriter, Write},
     os::unix::net::{UnixListener, UnixStream},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -59,7 +59,8 @@ pub struct Socket {
 }
 
 pub struct Client {
-    connection: UnixStream,
+    reader: BufReader<UnixStream>,
+    writer: BufWriter<UnixStream>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -198,19 +199,10 @@ impl Socket {
         state: Arc<Mutex<State>>,
         should_stop: Arc<AtomicBool>,
     ) -> Result<()> {
-        let mut buffer = String::new();
-        let mut reader = BufReader::new(match stream.try_clone() {
-            Ok(s) => s,
-            Err(e) => return Err(anyhow!("Couldn't create Read Buffer: {}", e)),
-        });
+        let mut client = Client::bind_to_stream(stream)?;
         debug!("Reading request from client...");
-        if let Err(e) = reader.read_line(&mut buffer) {
-            return Err(anyhow!(
-                "Couldn't read message from incoming stream: \n {}",
-                e
-            ));
-        };
-        debug!("Request read: {}", buffer);
+        let request = client.receive()?;
+        debug!("Request read: {}", request);
 
         let mut state = match state.lock() {
             Ok(s) => s,
@@ -222,7 +214,7 @@ impl Socket {
         };
 
         debug!("Parsing request as JSON...");
-        let json = match serde_json::from_str::<serde_json::Value>(buffer.as_str()) {
+        let json = match serde_json::from_str::<serde_json::Value>(request.as_str()) {
             Ok(v) => v,
             Err(e) => return Err(anyhow!("Couldn't parse the request as valid JSON: {}", e)),
         };
@@ -239,17 +231,7 @@ impl Socket {
             }
         };
         debug!("Response constructed: {}", response);
-
-        let res = match stream.write_all(format!("{}\n", response).as_bytes()) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(anyhow!("Couldn't write a response to the stream: {}", e)),
-        };
-
-        if let Err(e) = stream.flush() {
-            return Err(anyhow!("Couldn't flush the buffer: {}", e));
-        }
-
-        res
+        client.send(response)
     }
 
     fn run_ipc_action(
@@ -380,6 +362,22 @@ impl Socket {
 }
 
 impl Client {
+    fn create_buffers(
+        stream: &UnixStream,
+    ) -> Result<(BufReader<UnixStream>, BufWriter<UnixStream>)> {
+        let reader = BufReader::new(match stream.try_clone() {
+            Ok(s) => s,
+            Err(e) => return Err(anyhow!("Couldn't create Reader Buffer: {}", e)),
+        });
+
+        let writer = BufWriter::new(match stream.try_clone() {
+            Ok(s) => s,
+            Err(e) => return Err(anyhow!("Couldn't create Writer Buffer: {}", e)),
+        });
+
+        Ok((reader, writer))
+    }
+
     pub fn bind(socket_path: Option<String>) -> Result<Self> {
         let path = match socket_path {
             Some(path) => path,
@@ -389,52 +387,71 @@ impl Client {
             Ok(conn) => conn,
             Err(e) => return Err(anyhow!("Couldn't connect to socket {}:\n {}", &path, e)),
         };
-        Ok(Self { connection })
+        let buffers = Self::create_buffers(&connection)?;
+        Ok(Self {
+            reader: buffers.0,
+            writer: buffers.1,
+        })
     }
 
-    pub fn send(&mut self, request: IpcAction) -> Result<String> {
-        debug!("Writing request to client: {}", request.to_json());
-        if let Err(e) = self
-            .connection
-            .write_all(format!("{}\n", request.to_json()).as_bytes())
-        {
-            return Err(anyhow!("Couldn't write message to the stream: \n {}", e));
+    pub fn bind_to_stream(stream: &UnixStream) -> Result<Self> {
+        let buffers = Self::create_buffers(stream)?;
+        Ok(Self {
+            reader: buffers.0,
+            writer: buffers.1,
+        })
+    }
+
+    pub fn send(&mut self, message: String) -> Result<()> {
+        if let Err(e) = self.writer.write_all(format!("{}\n", message).as_bytes()) {
+            return Err(anyhow!("Couldn't write message to the stream:\n {}", e));
         }
+        match self.writer.flush() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(anyhow!("Couldn't flush buffer:\n{}", e)),
+        }
+    }
+
+    pub fn receive(&mut self) -> Result<String> {
+        let mut message = String::new();
+
+        match self.reader.read_line(&mut message) {
+            Ok(_) => Ok(String::from(message.trim())),
+            Err(e) => Err(anyhow!("Couldn't read message from the stream:\n {}", e)),
+        }
+    }
+
+    pub fn send_ipc_request(&mut self, request: IpcAction) -> Result<String> {
+        debug!("Writing request to client: {}", request.to_json());
+        self.send(request.to_json().to_string())?;
         debug!("Request sent.");
 
-        debug!("Flushing the stream...");
-        if let Err(e) = self.connection.flush() {
-            return Err(anyhow!("Couldn't flush the buffer: {}", e));
-        }
-        debug!("Stream flushed.");
+        if let Err(e) = self.writer.flush() {
+            return Err(anyhow!("Couldn't flush buffer:\n{}", e));
+        };
 
-        let mut response = String::new();
-
-        let mut reader = BufReader::new(match self.connection.try_clone() {
-            Ok(s) => s,
-            Err(e) => return Err(anyhow!("Couldn't create Read Buffer: {}", e)),
-        });
-        match reader.read_line(&mut response) {
-            Ok(_) => Ok(response),
-            Err(e) => Err(anyhow!("{}", e)),
-        }
+        self.receive()
     }
 
     pub fn send_from_args(&mut self, args: MsgArgs) -> Result<()> {
         let response = (match args.command {
             MsgSubcommandArgs::LockRotation(sub_command) => {
-                self.send(IpcAction::LockRotation(sub_command.lock_rotation))
+                self.send_ipc_request(IpcAction::LockRotation(sub_command.lock_rotation))
             }
-            MsgSubcommandArgs::ToggleLockRotation(_) => self.send(IpcAction::ToggleLockRotation()),
+            MsgSubcommandArgs::ToggleLockRotation(_) => {
+                self.send_ipc_request(IpcAction::ToggleLockRotation())
+            }
             MsgSubcommandArgs::Monitor(sub_command) => {
-                self.send(IpcAction::ChangeMonitor(sub_command.monitor))
+                self.send_ipc_request(IpcAction::ChangeMonitor(sub_command.monitor))
             }
-            MsgSubcommandArgs::Transform(sub_command) => self.send(IpcAction::ChangeTransform(
-                TransformMapping::from_transform_vec(Some(sub_command.transform)),
-            )),
-            MsgSubcommandArgs::Ping(_) => self.send(IpcAction::Ping()),
-            MsgSubcommandArgs::Stop(_) => self.send(IpcAction::Stop()),
-            MsgSubcommandArgs::PrintState(_) => self.send(IpcAction::PrintState()),
+            MsgSubcommandArgs::Transform(sub_command) => {
+                self.send_ipc_request(IpcAction::ChangeTransform(
+                    TransformMapping::from_transform_vec(Some(sub_command.transform)),
+                ))
+            }
+            MsgSubcommandArgs::Ping(_) => self.send_ipc_request(IpcAction::Ping()),
+            MsgSubcommandArgs::Stop(_) => self.send_ipc_request(IpcAction::Stop()),
+            MsgSubcommandArgs::PrintState(_) => self.send_ipc_request(IpcAction::PrintState()),
         })?;
         println!("{}", response);
         Ok(())

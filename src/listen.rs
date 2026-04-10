@@ -84,7 +84,7 @@ fn run_threads(
     if should_stop.load(Ordering::Relaxed) && std::fs::exists(&socket_path).unwrap_or_default() {
         match ipc::Client::bind(Some(socket_path)) {
             Ok(mut client) => {
-                client.send(ipc::IpcAction::Stop())?; // Used to wake the IPC thread for clean up.
+                client.send_ipc_request(ipc::IpcAction::Stop())?; // Used to wake the IPC thread for clean up.
             }
             Err(e) => return Err(e),
         }
