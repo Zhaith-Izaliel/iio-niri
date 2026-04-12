@@ -184,11 +184,51 @@ Use `iio-niri -h` to see a short summary of available options and `iio-niri --he
 
 At runtime, the program relies on [IIO-Sensor-Proxy][IIO-Sensor-Proxy-Url] to fetch updates on the accelerometer. Make sure it is running alongside IIO-Niri.
 
-Then start IIO-Niri with Niri:
+Then start IIO-Niri in `listen` mode with Niri:
 
 ```kdl
 spawn-at-startup "iio-niri" "listen" "--monitor" "eDP-1"
 ```
+
+### Communicating with a running instance of IIO-Niri
+
+IIO-Niri generates its own socket for Inter Process Communication (IPC). You can use the `msg` sub-command to send requests to the IPC.
+
+For example:
+
+```shell
+iio-niri msg ping # Prints the received response as a JSON object.
+```
+
+#### Implementing your own IPC client
+
+It is also possible, albeit not recommended, to communicate directly with the socket sending your own JSON formatted strings.
+
+Under the hood, the `msg` sub-command sends a request in the form:
+
+```json
+{
+  "action": <action_string>,
+  "arg": <argument for the action, can be null>
+}
+```
+
+Refer to the [IPC code source](https://github.com/Zhaith-Izaliel/iio-niri/blob/be812d237f1f69775947a1afef813ed956943907/src/ipc.rs#L84) for a list of available `action_string` and what type of argument each action takes.
+
+When a request is received and processed, IIO-Niri returns a response as a JSON formatted string, in the form:
+
+```json
+{
+  "status": <either "ok" or "error">,
+  "response": <a string if the status is "error" or the value returned by the action, usually the old value after a state change>
+}
+```
+
+To know what is the `response` field when a request succeeds (i.e. `status = "ok"`), please refer to the `iio-niri msg --help` and its sub-commands.
+
+### Generating Shell Completions
+
+You can generate shell completions script by using `iio-niri completions <shell>`. The completions script will print to the standard output.
 
 ### NixOS
 
@@ -318,4 +358,4 @@ Project Link: [https://github.com/Zhaith-Izaliel/iio-niri](https://github.com/Zh
 [Nix-url]: https://nixos.org/
 
 [IIO-Sensor-Proxy-Url]: https://gitlab.freedesktop.org/hadess/iio-sensor-proxy/
-[module-doc]: https://github.com/Zhaith-Izaliel/iio-niri/blob/master/module-doc.md
+[module-doc]: https://github.com/Zhaith-Izaliel/iio-niri/blob/master/MODULE-DOC.md
