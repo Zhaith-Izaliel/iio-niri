@@ -13,6 +13,7 @@ use signal_hook::{consts::TERM_SIGNALS, iterator::Handle};
 
 use crate::{app, ipc, orientation, state};
 
+/// Run the listen subcommand
 pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Result<()> {
     debug!("Binding Niri socket...");
     let mut niri_socket = match &args.niri_socket {
@@ -38,6 +39,7 @@ pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Resul
     run_threads(state, args.timeout, niri_socket, iio_niri_socket)
 }
 
+/// Run the threads used when listening. This function blocks the current thread until all child threads have exited.
 fn run_threads(
     state: state::State,
     timeout: u64,
@@ -96,6 +98,7 @@ fn run_threads(
     Ok(())
 }
 
+/// Spawn the thread to handle IIO-Niri's IPC
 fn handle_ipc(
     should_stop: Arc<AtomicBool>,
     state: Arc<Mutex<state::State>>,
@@ -111,6 +114,7 @@ fn handle_ipc(
     })
 }
 
+/// Spawn the thread to handle the stopping signals to exit gracefully
 fn handle_signals(should_stop: Arc<AtomicBool>) -> Result<(Handle, JoinHandle<()>)> {
     let mut signals = match Signals::new(TERM_SIGNALS) {
         Ok(s) => s,
@@ -131,6 +135,7 @@ fn handle_signals(should_stop: Arc<AtomicBool>) -> Result<(Handle, JoinHandle<()
     Ok((handle, thread_handle))
 }
 
+/// Spawn the thread to handle the accelerometer orientation changes
 fn handle_orientation(
     state: Arc<Mutex<state::State>>,
     timeout: u64,

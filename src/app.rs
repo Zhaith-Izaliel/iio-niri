@@ -3,11 +3,13 @@ use clap_complete::{generate, Generator, Shell};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use niri_ipc::Transform;
 
+/// Print the completion of the given command to the given shell on stdout.
 pub fn print_completions<G: Generator>(generator: G, cmd: &mut Command) {
     let name = String::from(cmd.get_name());
     generate(generator, cmd, name, &mut std::io::stdout());
 }
 
+/// Defines the entry point of the Command Parser
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -23,6 +25,7 @@ pub struct App {
     pub socket: Option<String>,
 }
 
+/// Defines the first level of subcommands
 #[derive(Subcommand)]
 pub enum Commands {
     /// Listen for the accelerometer orientation
@@ -39,6 +42,7 @@ pub enum Commands {
     Completions(CompletionsArgs),
 }
 
+/// Defines the arguments passed to the `listen` subcommand.
 #[derive(Args)]
 pub struct ListenArgs {
     /// The monitor to rotate depending on the accelerometer orientation. Defaults to the first monitor Niri can see.
@@ -73,12 +77,14 @@ pub struct ListenArgs {
     pub niri_socket: Option<String>,
 }
 
+/// Defines the arguments passed to the `msg` subcommand.
 #[derive(Args)]
 pub struct MsgArgs {
     #[command(subcommand)]
     pub command: MsgSubcommandArgs,
 }
 
+/// Defines the arguments passed to the `completions` subcommand.
 #[derive(Args)]
 pub struct CompletionsArgs {
     /// The shell to generate completions for.
@@ -86,6 +92,7 @@ pub struct CompletionsArgs {
     pub shell: Shell,
 }
 
+/// Defines the subcommands of the `msg` subcommand.
 #[derive(Subcommand)]
 pub enum MsgSubcommandArgs {
     /// Change whether to lock the rotation of the screen.
@@ -101,12 +108,12 @@ pub enum MsgSubcommandArgs {
     /// Change the monitor to rotate with the accelerometer orientation.
     ///
     /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = <old_value>`
-    Monitor(MonitorArgs),
+    ChangeMonitor(ChangeMonitorArgs),
 
     /// Change the transformation mapping.
     ///
     /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = <old_value>`
-    Transform(TransformArgs),
+    ChangeTransform(ChangeTransformArgs),
 
     /// Ping IIO-Niri to know if its listening for request on its IPC.
     ///
@@ -124,6 +131,7 @@ pub enum MsgSubcommandArgs {
     PrintState(PrintStateArgs),
 }
 
+/// Defines the arguments of the subcommand `msg lock_rotation`
 #[derive(Args)]
 pub struct LockRotationArgs {
     /// The value to lock the rotation of the screen.
@@ -131,26 +139,32 @@ pub struct LockRotationArgs {
     pub lock_rotation: bool,
 }
 
+/// Defines the arguments of the subcommand `msg toggle_lock_rotation`
 #[derive(Args)]
 pub struct ToggleLockRotationArgs;
 
+/// Defines the arguments of the subcommand `msg ping`
 #[derive(Args)]
 pub struct PingArgs;
 
+/// Defines the arguments of the subcommand `msg stop`
 #[derive(Args)]
 pub struct StopArgs;
 
+/// Defines the arguments of the subcommand `msg print-state`
 #[derive(Args)]
 pub struct PrintStateArgs;
 
+/// Defines the arguments of the subcommand `msg change-monitor`
 #[derive(Args)]
-pub struct MonitorArgs {
+pub struct ChangeMonitorArgs {
     /// The monitor to rotate depending on the accelerometer orientation.
     pub monitor: String,
 }
 
+/// Defines the arguments of the subcommand `msg transform`
 #[derive(Args)]
-pub struct TransformArgs {
+pub struct ChangeTransformArgs {
     /// Maps the accelerometer transforms (normal,left-up,bottom-up,right-up) to Niri's transforms.
     ///
     /// In some devices the accelerometer orientation doesn't match the display orientation.

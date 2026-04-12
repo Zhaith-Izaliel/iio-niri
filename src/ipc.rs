@@ -18,7 +18,8 @@ use crate::{
     state::{State, TransformMapping},
 };
 
-fn get_iio_niri_socket_directory() -> String {
+/// Returns the IIO-Niri socket default directory
+fn get_iio_niri_default_socket_directory() -> String {
     match std::env::var("XDG_RUNTIME_DIR") {
         Ok(val) => val,
         Err(e) => {
@@ -28,21 +29,23 @@ fn get_iio_niri_socket_directory() -> String {
     }
 }
 
+/// Returns the default IIO-Niri socket path
 pub fn get_iio_niri_socket_path() -> String {
     let wayland_display = std::env::var("WAYLAND_DISPLAY");
     format!(
         "{}/iio-niri.{}.socket",
-        get_iio_niri_socket_directory(),
+        get_iio_niri_default_socket_directory(),
         match wayland_display {
             Ok(val) => val,
             Err(e) => {
-                error!("Couldn't get WAYLAND_DISPLAY: \n{}", e);
+                error!("Couldn't get WAYLAND_DISPLAY:\n{}", e);
                 String::from("unknown")
             }
         }
     )
 }
 
+/// Defines the available IPC action
 pub enum IpcAction {
     LockRotation(bool),
     ToggleLockRotation(),
@@ -53,16 +56,19 @@ pub enum IpcAction {
     PrintState(),
 }
 
+/// Defines the IIO-Niri's socket
 pub struct Socket {
     socket: UnixListener,
     path: String,
 }
 
+/// A client to communicate with IIO-Niri's Socket.
 pub struct Client {
     reader: BufReader<UnixStream>,
     writer: BufWriter<UnixStream>,
 }
 
+/// The response for a given action from a socket.
 #[derive(Serialize, Deserialize)]
 struct Response<T> {
     status: String,
@@ -74,6 +80,7 @@ pub type NiriSocket = niri_ipc::socket::Socket;
 pub type IioNiriSocket = Socket;
 
 impl IpcAction {
+    /// Represents the action as a String
     fn action_string(&self) -> &str {
         match self {
             Self::LockRotation(_) => "lock_rotation",
@@ -86,6 +93,7 @@ impl IpcAction {
         }
     }
 
+    /// Parse the action from a JSON object
     pub fn from_json(json: serde_json::Value) -> Result<Self> {
         if !json.is_object() {
             return Err(anyhow!("The IpcAction JSON is malformed."));
@@ -127,7 +135,7 @@ impl IpcAction {
             "change_transform" => {
                 let mapping = match serde_json::from_value::<TransformMapping>(value.to_owned()) {
                     Ok(m) => m,
-                    Err(e) => return Err(anyhow!("The `arg` for an action of type `change_transform` couldn't be serialized into a TransformMapping: {}", e))
+                    Err(e) => return Err(anyhow!("The `arg` for an action of type `change_transform` couldn't be serialized into a TransformMapping:\n{}", e))
                 };
                 Ok(IpcAction::ChangeTransform(mapping))
             }
@@ -138,6 +146,7 @@ impl IpcAction {
         }
     }
 
+    /// Parse the action to a JSON object, used as a way to communicate with the socket.
     pub fn to_json(&self) -> serde_json::Value {
         match self {
             Self::LockRotation(r) => json!({
@@ -173,15 +182,29 @@ impl IpcAction {
 }
 
 impl<T> Response<T> {
+    /// Creates a new response
     pub fn new(status: String, value: T) -> Self {
         Self {
             status,
             response: value,
         }
     }
+
+    /// Creates a new "ok" response
+    pub fn new_ok(value: T) -> Self {
+        Self::new(String::from("ok"), value)
+    }
+}
+
+impl Response<String> {
+    /// Creates a new "error" response. It is assumed the `response` field is always a string for errors.
+    pub fn new_error(message: String) -> Self {
+        Self::new(String::from("error"), message)
+    }
 }
 
 impl Socket {
+    /// Bind the socket to the given path, defaulting to `$XDG_RUNTIME_DIR/iio-niri.$WAYLAND_DISPLAY.sock` if no path is supplied.
     pub fn bind(socket_path: Option<String>) -> Result<Self> {
         let path = match socket_path {
             Some(path) => path,
@@ -194,6 +217,7 @@ impl Socket {
         }
     }
 
+    /// Handle client requests
     fn handle_client(
         stream: &mut UnixStream,
         state: Arc<Mutex<State>>,
@@ -223,17 +247,16 @@ impl Socket {
         debug!("Constructing response to the client");
         let response = match IpcAction::from_json(json) {
             Ok(a) => Self::run_ipc_action(&mut state, a, Arc::clone(&should_stop))?,
-            Err(e) => {
-                match serde_json::to_string(&Response::new(String::from("error"), e.to_string())) {
-                    Ok(r) => r,
-                    Err(e) => return Err(anyhow!("Couldn't parse the response to send: {}", e)),
-                }
-            }
+            Err(e) => match serde_json::to_string(&Response::new_error(e.to_string())) {
+                Ok(r) => r,
+                Err(e) => return Err(anyhow!("Couldn't parse the response to send: {}", e)),
+            },
         };
         debug!("Response constructed: {}", response);
         client.send(response)
     }
 
+    /// Run the given IPC action, modifying the state is necessary.
     fn run_ipc_action(
         state: &mut State,
         change: IpcAction,
@@ -247,8 +270,7 @@ impl Socket {
                     "Changing `state.lock_rotation`. Old value: `{}`, New value: `{}`",
                     old, b
                 );
-                let response = match serde_json::to_string(&Response::new(String::from("ok"), old))
-                {
+                let response = match serde_json::to_string(&Response::new_ok(old)) {
                     Ok(s) => s,
                     Err(e) => return Err(anyhow!("Couldn't parse response to the client: {}", e)),
                 };
@@ -261,8 +283,7 @@ impl Socket {
                     "Changing `state.lock_rotation`. Old value: `{}`, New value: `{}`",
                     old, state.lock_rotation
                 );
-                let response = match serde_json::to_string(&Response::new(String::from("ok"), old))
-                {
+                let response = match serde_json::to_string(&Response::new_ok(old)) {
                     Ok(s) => s,
                     Err(e) => return Err(anyhow!("Couldn't parse response to the client: {}", e)),
                 };
@@ -289,18 +310,15 @@ impl Socket {
                     "Changing `state.mapping`. Old value: `{}`, New value: `{}`",
                     old, mapping
                 );
-                let response = match serde_json::to_string(&Response::new(String::from("ok"), old))
-                {
+                let response = match serde_json::to_string(&Response::new_ok(old)) {
                     Ok(s) => s,
                     Err(e) => return Err(anyhow!("Couldn't parse response to the client: {}", e)),
                 };
                 Ok(response)
             }
             IpcAction::Ping() => {
-                let response = match serde_json::to_string(&Response::new(
-                    String::from("ok"),
-                    String::from("Pong!"),
-                )) {
+                let response = match serde_json::to_string(&Response::new_ok(String::from("Pong!")))
+                {
                     Ok(s) => s,
                     Err(e) => return Err(anyhow!("Couldn't parse response to the client: {}", e)),
                 };
@@ -309,18 +327,8 @@ impl Socket {
             IpcAction::Stop() => {
                 should_stop.store(true, Ordering::Relaxed);
                 debug!("Stopping the listener...");
-                let response = match serde_json::to_string(&Response::new(
-                    String::from("ok"),
-                    String::from("Stopping!"),
-                )) {
-                    Ok(s) => s,
-                    Err(e) => return Err(anyhow!("Couldn't parse response to the client: {}", e)),
-                };
-                Ok(response)
-            }
-            IpcAction::PrintState() => {
                 let response =
-                    match serde_json::to_string(&Response::new(String::from("ok"), state)) {
+                    match serde_json::to_string(&Response::new_ok(String::from("Stopping!"))) {
                         Ok(s) => s,
                         Err(e) => {
                             return Err(anyhow!("Couldn't parse response to the client: {}", e))
@@ -328,9 +336,17 @@ impl Socket {
                     };
                 Ok(response)
             }
+            IpcAction::PrintState() => {
+                let response = match serde_json::to_string(&Response::new_ok(state)) {
+                    Ok(s) => s,
+                    Err(e) => return Err(anyhow!("Couldn't parse response to the client: {}", e)),
+                };
+                Ok(response)
+            }
         }
     }
 
+    /// Process IPC requests as they come, blocking the running thread if no action is received.
     pub fn process(&self, state: Arc<Mutex<State>>, should_stop: Arc<AtomicBool>) {
         while !should_stop.load(Ordering::Relaxed) {
             match self.socket.accept() {
@@ -348,10 +364,12 @@ impl Socket {
         }
     }
 
+    /// Returns the socket path
     pub fn get_path(&self) -> &str {
         self.path.as_str()
     }
 
+    /// Removes the socket from the filesystem
     pub fn destroy_socket(&self) -> Result<()> {
         debug!("Removing socket at {}", self.path);
         match fs::remove_file(&self.path) {
@@ -362,6 +380,7 @@ impl Socket {
 }
 
 impl Client {
+    /// Create the underlying read/write buffers using the provided UnixStream
     fn create_buffers(
         stream: &UnixStream,
     ) -> Result<(BufReader<UnixStream>, BufWriter<UnixStream>)> {
@@ -378,6 +397,7 @@ impl Client {
         Ok((reader, writer))
     }
 
+    /// Binds the client to the socket, returning the bound client.
     pub fn bind(socket_path: Option<String>) -> Result<Self> {
         let path = match socket_path {
             Some(path) => path,
@@ -394,6 +414,7 @@ impl Client {
         })
     }
 
+    /// Bind the client to a UnixStream, returning the bound client.
     pub fn bind_to_stream(stream: &UnixStream) -> Result<Self> {
         let buffers = Self::create_buffers(stream)?;
         Ok(Self {
@@ -402,6 +423,7 @@ impl Client {
         })
     }
 
+    /// Send a message to the client's destination
     pub fn send(&mut self, message: String) -> Result<()> {
         if let Err(e) = self.writer.write_all(format!("{}\n", message).as_bytes()) {
             return Err(anyhow!("Couldn't write message to the stream:\n{}", e));
@@ -412,6 +434,7 @@ impl Client {
         }
     }
 
+    /// Receive a message from the client's destination
     pub fn receive(&mut self) -> Result<String> {
         let mut message = String::new();
 
@@ -421,6 +444,7 @@ impl Client {
         }
     }
 
+    /// Send a correctly formatted IPC request and waits for the response
     pub fn send_ipc_request(&mut self, request: IpcAction) -> Result<String> {
         debug!("Writing request to client: {}", request.to_json());
         self.send(request.to_json().to_string())?;
@@ -433,6 +457,7 @@ impl Client {
         self.receive()
     }
 
+    /// Send an IPC request using the command line arguments to construct the request.
     pub fn send_from_args(&mut self, args: MsgArgs) -> Result<()> {
         let response = (match args.command {
             MsgSubcommandArgs::LockRotation(sub_command) => {
@@ -441,12 +466,12 @@ impl Client {
             MsgSubcommandArgs::ToggleLockRotation(_) => {
                 self.send_ipc_request(IpcAction::ToggleLockRotation())
             }
-            MsgSubcommandArgs::Monitor(sub_command) => {
+            MsgSubcommandArgs::ChangeMonitor(sub_command) => {
                 self.send_ipc_request(IpcAction::ChangeMonitor(sub_command.monitor))
             }
-            MsgSubcommandArgs::Transform(sub_command) => {
+            MsgSubcommandArgs::ChangeTransform(sub_command) => {
                 self.send_ipc_request(IpcAction::ChangeTransform(
-                    TransformMapping::from_transform_vec(Some(sub_command.transform)),
+                    TransformMapping::from_transform_vec(Some(sub_command.transform))?,
                 ))
             }
             MsgSubcommandArgs::Ping(_) => self.send_ipc_request(IpcAction::Ping()),

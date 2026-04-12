@@ -9,44 +9,22 @@ use std::{
 use anyhow::{anyhow, Result};
 use log::{debug, info};
 
-use dbus::blocking::stdintf::org_freedesktop_dbus::Properties;
-use niri_ipc::{socket::Socket, OutputAction, Request, Transform};
+use niri_ipc::{socket::Socket, OutputAction, Request};
 
 use crate::{
-    accelerometer::{Accelerometer, INTERFACE},
+    accelerometer::Accelerometer,
     monitor,
     state::{State, TransformMapping},
 };
 
-pub fn get_orientation(accelerometer: &Accelerometer) -> Result<String> {
-    let orientation: String = match accelerometer
-        .proxy()
-        .get(INTERFACE, "AccelerometerOrientation")
-    {
-        Ok(it) => it,
-        Err(_) => return Err(anyhow!("Couldn't get accelerometer orientation.")),
-    };
-
-    Ok(orientation)
-}
-
-fn parse_orientation(orientation: &str, mapping: &TransformMapping) -> Transform {
-    match orientation {
-        "normal" => mapping.normal,
-        "left-up" => mapping.left_up,
-        "bottom-up" => mapping.bottom_up,
-        "right-up" => mapping.right_up,
-        _ => mapping.normal,
-    }
-}
-
+/// Update the given monitor's orientation using the accelerometer orientation.
 fn update_orientation(
     socket: &mut Socket,
     monitor: &str,
-    orientation: &str,
+    acc_orientation: &str,
     matrix: &TransformMapping,
 ) -> Result<()> {
-    let orientation = parse_orientation(orientation, matrix);
+    let orientation = matrix.parse_orientation(acc_orientation);
 
     let outputs = monitor::get_monitors(socket)?;
 
@@ -90,6 +68,7 @@ fn update_orientation(
     Ok(())
 }
 
+/// Defines the thread routine to listen to orientation changes.
 pub fn change_orientation_routine(
     state: Arc<Mutex<State>>,
     timeout: u64,
@@ -110,7 +89,7 @@ pub fn change_orientation_routine(
             debug!("Found accelerometer's signal!");
 
             debug!("Getting orientation...");
-            let orientation = get_orientation(&accelerometer)?;
+            let orientation = accelerometer.get_orientation()?;
             debug!("Orientation obtained.");
 
             let state = match state.lock() {

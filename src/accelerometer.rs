@@ -7,15 +7,17 @@ use dbus::{
 use log::debug;
 use std::time::Duration;
 
-pub const INTERFACE: &str = "net.hadess.SensorProxy";
-pub const PATH: &str = "/net/hadess/SensorProxy";
+const INTERFACE: &str = "net.hadess.SensorProxy";
+const PATH: &str = "/net/hadess/SensorProxy";
 
+/// A structure to query the manage the Accelerometer through DBus.
 pub struct Accelerometer {
     dbus_connection: Connection,
     timeout: u64,
 }
 
 impl Accelerometer {
+    /// Create the DBus connection to the Accelerometer
     fn create_dbus_connection() -> Result<Connection> {
         debug!("Connecting to the system bus...");
         let conn = match Connection::new_system() {
@@ -37,10 +39,22 @@ impl Accelerometer {
         Ok(conn)
     }
 
+    /// Get the current Accelerometer's orientation
+    pub fn get_orientation(&self) -> Result<String> {
+        let orientation: String = match self.proxy().get(INTERFACE, "AccelerometerOrientation") {
+            Ok(it) => it,
+            Err(_) => return Err(anyhow!("Couldn't get accelerometer orientation.")),
+        };
+
+        Ok(orientation)
+    }
+
+    /// Queries if the hardware currently has an Accelerometer.
     fn has_accelerometer(&self) -> bool {
         matches!(self.proxy().get(INTERFACE, "HasAccelerometer"), Ok(it) if it)
     }
 
+    /// Creates the DBus proxy to query and manage the Accelerometer.
     pub fn proxy<'a>(&'a self) -> Proxy<'a, &'a Connection> {
         Proxy::new(
             INTERFACE,
@@ -50,6 +64,7 @@ impl Accelerometer {
         )
     }
 
+    /// Creates a new instance of Accelerometer.
     pub fn new(timeout: u64) -> Result<Self> {
         let dbus_connection = Self::create_dbus_connection()?;
         let accelerometer = Self {
@@ -65,6 +80,7 @@ impl Accelerometer {
         Ok(accelerometer)
     }
 
+    /// Release the Accelerometer from the Proxy.
     pub fn release(&self) -> Result<()> {
         debug!("Releasing accelerometer...");
         let result: Result<(), dbus::Error> =
@@ -76,13 +92,11 @@ impl Accelerometer {
                 debug!("Accelerometer released.");
                 Ok(())
             }
-            Err(err) => Err(anyhow!(format!(
-                "Couldn't release accelerometer:\n{}",
-                err
-            ))),
+            Err(err) => Err(anyhow!(format!("Couldn't release accelerometer:\n{}", err))),
         }
     }
 
+    /// Claim the Accelerometer from the Proxy.
     pub fn claim(&self) -> Result<()> {
         debug!("Claiming accelerometer...");
         let result: Result<(), dbus::Error> =
@@ -98,6 +112,7 @@ impl Accelerometer {
         }
     }
 
+    /// Returns the DBus Connection inside this object
     pub fn get_dbus_connection(&self) -> &Connection {
         &self.dbus_connection
     }
