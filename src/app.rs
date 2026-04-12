@@ -115,7 +115,7 @@ pub enum MsgSubcommandArgs {
     /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = <old_value>`
     ChangeTransform(ChangeTransformArgs),
 
-    /// Ping IIO-Niri to know if its listening for request on its IPC.
+    /// Ping IIO-Niri to know if its listening for requests on its IPC.
     ///
     /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = "Pong!"`
     Ping(PingArgs),
