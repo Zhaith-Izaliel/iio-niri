@@ -1,6 +1,12 @@
-use clap::{ArgAction, Args, Parser, Subcommand};
+use clap::{ArgAction, Args, Command, Parser, Subcommand};
+use clap_complete::{generate, Generator, Shell};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use niri_ipc::Transform;
+
+pub fn print_completions<G: Generator>(generator: G, cmd: &mut Command) {
+    let name = String::from(cmd.get_name());
+    generate(generator, cmd, name, &mut std::io::stdout());
+}
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -28,6 +34,9 @@ pub enum Commands {
     ///
     /// Each request has a different response when it succeeds, however the error response is always the same, in the form `{"status": "error", "response": <message>}`.
     Msg(MsgArgs),
+
+    /// Generate completions files for a given shell
+    Completions(CompletionsArgs),
 }
 
 #[derive(Args)]
@@ -70,9 +79,16 @@ pub struct MsgArgs {
     pub command: MsgSubcommandArgs,
 }
 
+#[derive(Args)]
+pub struct CompletionsArgs {
+    /// The shell to generate completions for.
+    #[arg(action=ArgAction::Set)]
+    pub shell: Shell,
+}
+
 #[derive(Subcommand)]
 pub enum MsgSubcommandArgs {
-    /// Lock the rotation of the screen.
+    /// Change whether to lock the rotation of the screen.
     ///
     /// If the request succeeds, returns a JSON string with `status = "ok"` and `response = <old_value>`
     LockRotation(LockRotationArgs),
@@ -110,7 +126,7 @@ pub enum MsgSubcommandArgs {
 
 #[derive(Args)]
 pub struct LockRotationArgs {
-    /// Lock the rotation of the screen.
+    /// The value to lock the rotation of the screen.
     #[arg(action=ArgAction::Set)]
     pub lock_rotation: bool,
 }

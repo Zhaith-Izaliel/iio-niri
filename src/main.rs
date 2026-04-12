@@ -1,6 +1,8 @@
 use anyhow::Result;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use log::{error, info};
+
+use crate::app::print_completions;
 
 mod accelerometer;
 mod app;
@@ -22,6 +24,10 @@ fn main() -> Result<()> {
             Ok(mut client) => client.send_from_args(msg_args),
             Err(e) => Err(e),
         },
+        app::Commands::Completions(completions_args) => {
+            print_completions(completions_args.shell, &mut app::App::command());
+            Ok(())
+        }
     };
 
     info!("Exiting.");
