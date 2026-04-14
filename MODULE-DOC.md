@@ -47,7 +47,7 @@ package
 
 
 
-Extra arguments to pass to IIO-Niri\. Note that it is run with the subcommand ` listen `, so the arguments must be arguments usable on ` listen `\.
+Extra arguments to pass to ` iio-niri listen `\.
 
 
 
