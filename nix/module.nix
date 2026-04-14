@@ -38,7 +38,7 @@ in
     extraArgs = mkOption {
       type = types.listOf types.str;
       default = [ ];
-      description = "Extra arguments to pass to IIO-Niri. Note that it is run with the subcommand `listen`, so the arguments must be arguments usable on `listen`.";
+      description = "Extra arguments to pass to `iio-niri listen`.";
     };
   };
 
