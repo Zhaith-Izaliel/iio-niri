@@ -64,13 +64,7 @@
           <ul>
             <li><a href="#from-source">From source</a></li>
             <li><a href="#nix">Nix</a></li>
-            <li>
-              <a href="#arch-linux-aur">Arch Linux (AUR)</a>
-              <ul>
-                <li><a href="#via-preferred-aur-helper-yay-or-paru">Via Preferred AUR Helper (Yay or Paru)</a></li>
-                <li><a href="#via-makepkg-default">Via makepkg (default)</a></li>
-              </ul>
-            </li>
+            <li><a href="#arch-linux-aur">Arch Linux (AUR)</a></li>
           </ul>
         </li>
       </ul>
@@ -78,23 +72,12 @@
     <li>
       <a href="#usage">Usage</a>
       <ul>
-        <li>
-          <a href="#communicating-with-a-running-instance-of-iio-niri">Communicating with a running instance of IIO-Niri</a>
-          <ul>
-            <li><a href="#implementing-your-own-ipc-client">Implementing your own IPC client</a></li>
-          </ul>
-        </li>
+        <li><a href="#communicating-with-a-running-instance-of-iio-niri">Communicating with a running instance of IIO-Niri</a></li>
         <li><a href="#generating-shell-completions">Generating Shell Completions</a></li>
         <li><a href="#nixos">NixOS</a></li>
       </ul>
     </li>
-    <li>
-      <a href="#contributing">Contributing</a>
-      <ul>
-        <li><a href="#how-to-make-a-pull-request">How to make a pull request</a></li>
-        <li><a href="#top-contributors">Top contributors:</a></li>
-      </ul>
-    </li>
+    <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
     <li><a href="#acknowledgments">Acknowledgments</a></li>
