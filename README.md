@@ -43,30 +43,33 @@
 </div>
 
 
+
 <!-- TABLE OF CONTENTS -->
 <details>
   <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
+<!--toc:start-->
+  - [About The Project](#about-the-project)
+    - [Built With](#built-with)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+      - [From source](#from-source)
+      - [Nix](#nix)
+      - [Arch Linux (AUR)](#arch-linux-aur)
+        - [Via Preferred AUR Helper (Yay or Paru)](#via-preferred-aur-helper-yay-or-paru)
+        - [Via makepkg (default)](#via-makepkg-default)
+  - [Usage](#usage)
+    - [Communicating with a running instance of IIO-Niri](#communicating-with-a-running-instance-of-iio-niri)
+      - [Implementing your own IPC client](#implementing-your-own-ipc-client)
+    - [Generating Shell Completions](#generating-shell-completions)
+    - [NixOS](#nixos)
+  - [Contributing](#contributing)
+    - [How to make a pull request](#how-to-make-a-pull-request)
+    - [Top contributors:](#top-contributors)
+  - [License](#license)
+  - [Contact](#contact)
+  - [Acknowledgments](#acknowledgments)
+<!--toc:end-->
 </details>
 
 
@@ -213,7 +216,7 @@ Under the hood, the `msg` sub-command sends a request in the form:
 }
 ```
 
-Refer to the [IPC code source](https://github.com/Zhaith-Izaliel/iio-niri/blob/be812d237f1f69775947a1afef813ed956943907/src/ipc.rs#L84) for a list of available `action_string` and what type of argument each action takes.
+Refer to the [IPC source code](https://github.com/Zhaith-Izaliel/iio-niri/blob/be812d237f1f69775947a1afef813ed956943907/src/ipc.rs#L84) for a list of available `action_string` and what type of argument each action takes.
 
 When a request is received and processed, IIO-Niri returns a response as a JSON formatted string, in the form:
 
@@ -290,14 +293,16 @@ Contributions are what make the open source community such an amazing place to l
 If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
 Don't forget to give the project a star! Thanks again!
 
+> [!IMPORTANT]
+> We do not allow AI generated or AI assisted contributions, as they usually show a lack of proper understanding of the project source code and makes maintenance harder in the long run.
+
 ### How to make a pull request
 
 1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/amazing-feature`)
-3. Commit your Changes (`git commit -m 'feat: add some amazing-feature'`)
+2. Commit your Changes (`git commit -m 'feat: add some amazing-feature'`)
   * Your commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification.
-4. Push to the Branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request on `develop`
+3. Push to your `master` branch (`git push origin master`)
+4. Open a Pull Request on `master`
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
