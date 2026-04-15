@@ -48,27 +48,57 @@
 <details>
   <summary>Table of Contents</summary>
 <!--toc:start-->
-  - [About The Project](#about-the-project)
-    - [Built With](#built-with)
-  - [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-      - [From source](#from-source)
-      - [Nix](#nix)
-      - [Arch Linux (AUR)](#arch-linux-aur)
-        - [Via Preferred AUR Helper (Yay or Paru)](#via-preferred-aur-helper-yay-or-paru)
-        - [Via makepkg (default)](#via-makepkg-default)
-  - [Usage](#usage)
-    - [Communicating with a running instance of IIO-Niri](#communicating-with-a-running-instance-of-iio-niri)
-      - [Implementing your own IPC client](#implementing-your-own-ipc-client)
-    - [Generating Shell Completions](#generating-shell-completions)
-    - [NixOS](#nixos)
-  - [Contributing](#contributing)
-    - [How to make a pull request](#how-to-make-a-pull-request)
-    - [Top contributors:](#top-contributors)
-  - [License](#license)
-  - [Contact](#contact)
-  - [Acknowledgments](#acknowledgments)
+  <ul>
+    <li>
+      <a href="#about-the-project">About The Project</a>
+      <ul>
+        <li><a href="#built-with">Built With</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#getting-started">Getting Started</a>
+      <ul>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li>
+          <a href="#installation">Installation</a>
+          <ul>
+            <li><a href="#from-source">From source</a></li>
+            <li><a href="#nix">Nix</a></li>
+            <li>
+              <a href="#arch-linux-aur">Arch Linux (AUR)</a>
+              <ul>
+                <li><a href="#via-preferred-aur-helper-yay-or-paru">Via Preferred AUR Helper (Yay or Paru)</a></li>
+                <li><a href="#via-makepkg-default">Via makepkg (default)</a></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li>
+      <a href="#usage">Usage</a>
+      <ul>
+        <li>
+          <a href="#communicating-with-a-running-instance-of-iio-niri">Communicating with a running instance of IIO-Niri</a>
+          <ul>
+            <li><a href="#implementing-your-own-ipc-client">Implementing your own IPC client</a></li>
+          </ul>
+        </li>
+        <li><a href="#generating-shell-completions">Generating Shell Completions</a></li>
+        <li><a href="#nixos">NixOS</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#contributing">Contributing</a>
+      <ul>
+        <li><a href="#how-to-make-a-pull-request">How to make a pull request</a></li>
+        <li><a href="#top-contributors">Top contributors:</a></li>
+      </ul>
+    </li>
+    <li><a href="#license">License</a></li>
+    <li><a href="#contact">Contact</a></li>
+    <li><a href="#acknowledgments">Acknowledgments</a></li>
+  </ul>
 <!--toc:end-->
 </details>
 
