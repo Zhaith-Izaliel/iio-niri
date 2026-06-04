@@ -1,6 +1,6 @@
 [package]
 name = "iio-niri"
-version = "2.0.0"
+version = "2.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -14,7 +14,7 @@ clap_complete = "4.6.1"
 dbus = "0.9.7"
 env_logger = "0.11.8"
 log = "0.4.29"
-niri-ipc = { version = "=25.11.0", features = ["clap"] }
+niri-ipc = { version = "=26.4.0", features = ["clap"] }
 serde = "1.0.228"
 serde_json = "1.0.149"
 signal-hook = "0.4.3"
