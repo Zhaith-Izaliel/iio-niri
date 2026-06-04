@@ -1,13 +1,13 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
   };
 
   outputs =
     inputs@{ flake-parts, ... }:
     let
       inherit (cargoToml.package) name version;
-      cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+      cargoToml = fromTOML (builtins.readFile ./Cargo.toml);
     in
     flake-parts.lib.mkFlake { inherit inputs; } (
       { withSystem, ... }:
