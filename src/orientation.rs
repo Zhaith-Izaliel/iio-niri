@@ -1,9 +1,6 @@
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
-    time::Duration,
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
 };
 
 use anyhow::{anyhow, Result};
@@ -83,7 +80,7 @@ pub fn change_orientation_routine(
     while !should_stop.load(Ordering::Relaxed) {
         let found_signal = accelerometer
             .get_dbus_connection()
-            .process(Duration::from_millis(timeout))?;
+            .process(accelerometer.get_timeout())?;
 
         if found_signal {
             debug!("Found accelerometer's signal!");

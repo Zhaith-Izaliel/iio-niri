@@ -23,6 +23,10 @@ pub struct App {
     /// Path to the socket for controlling IIO-Niri with its own IPC
     #[arg(short, long)]
     pub socket: Option<String>,
+
+    /// The number of milliseconds before timeout for an IPC request with IIO-Niri's socket
+    #[arg(short = 't', long, default_value_t = 5000)]
+    pub socket_timeout: u64,
 }
 
 /// Defines the first level of subcommands
@@ -42,7 +46,7 @@ pub enum Commands {
     Completions(CompletionsArgs),
 }
 
-/// Defines the arguments passed to the `listen` subcommand.
+/// Defines the arguments passed to the `listen` subcommand
 #[derive(Args)]
 pub struct ListenArgs {
     /// The monitor to rotate depending on the accelerometer orientation. Defaults to the first monitor Niri can see.
@@ -68,23 +72,23 @@ pub struct ListenArgs {
     )]
     pub transform: Option<Vec<Transform>>,
 
-    /// The number of milliseconds before timeout for a dbus request.
-    #[arg(short, long, default_value_t = 5000)]
-    pub timeout: u64,
+    /// The number of milliseconds before timeout for a dbus request
+    #[arg(short = 't', long = "timeout", default_value_t = 5000)]
+    pub dbus_timeout: u64,
 
     /// The path to the niri IPC socket.
     #[arg(short, long)]
     pub niri_socket: Option<String>,
 }
 
-/// Defines the arguments passed to the `msg` subcommand.
+/// Defines the arguments passed to the `msg` subcommand
 #[derive(Args)]
 pub struct MsgArgs {
     #[command(subcommand)]
     pub command: MsgSubcommandArgs,
 }
 
-/// Defines the arguments passed to the `completions` subcommand.
+/// Defines the arguments passed to the `completions` subcommand
 #[derive(Args)]
 pub struct CompletionsArgs {
     /// The shell to generate completions for.
@@ -92,7 +96,7 @@ pub struct CompletionsArgs {
     pub shell: Shell,
 }
 
-/// Defines the subcommands of the `msg` subcommand.
+/// Defines the subcommands of the `msg` subcommand
 #[derive(Subcommand)]
 pub enum MsgSubcommandArgs {
     /// Change whether to lock the rotation of the screen.
@@ -134,7 +138,7 @@ pub enum MsgSubcommandArgs {
 /// Defines the arguments of the subcommand `msg lock_rotation`
 #[derive(Args)]
 pub struct LockRotationArgs {
-    /// The value to lock the rotation of the screen.
+    /// The value to lock the rotation of the screen
     #[arg(action=ArgAction::Set)]
     pub lock_rotation: bool,
 }
@@ -158,7 +162,7 @@ pub struct PrintStateArgs;
 /// Defines the arguments of the subcommand `msg change-monitor`
 #[derive(Args)]
 pub struct ChangeMonitorArgs {
-    /// The monitor to rotate depending on the accelerometer orientation.
+    /// The monitor to rotate depending on the accelerometer orientation
     pub monitor: String,
 }
 
@@ -167,7 +171,7 @@ pub struct ChangeMonitorArgs {
 pub struct ChangeTransformArgs {
     /// Maps the accelerometer transforms (normal,left-up,bottom-up,right-up) to Niri's transforms.
     ///
-    /// In some devices the accelerometer orientation doesn't match the display orientation.
+    /// In some devices the accelerometer orientation doesn't match the display orientation
     /// This option allows you to provide the mapping from your accelerometer orientation to Niri's transform
     /// Passing a value such as 90,normal,180,270 will provide the following accelerometer mapping:
     ///

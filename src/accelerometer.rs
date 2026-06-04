@@ -13,7 +13,7 @@ const PATH: &str = "/net/hadess/SensorProxy";
 /// A structure to query the manage the Accelerometer through DBus.
 pub struct Accelerometer {
     dbus_connection: Connection,
-    timeout: u64,
+    timeout: Duration,
 }
 
 impl Accelerometer {
@@ -56,12 +56,7 @@ impl Accelerometer {
 
     /// Creates the DBus proxy to query and manage the Accelerometer.
     pub fn proxy<'a>(&'a self) -> Proxy<'a, &'a Connection> {
-        Proxy::new(
-            INTERFACE,
-            PATH,
-            Duration::from_millis(self.timeout),
-            &self.dbus_connection,
-        )
+        Proxy::new(INTERFACE, PATH, self.timeout, &self.dbus_connection)
     }
 
     /// Creates a new instance of Accelerometer.
@@ -69,7 +64,7 @@ impl Accelerometer {
         let dbus_connection = Self::create_dbus_connection()?;
         let accelerometer = Self {
             dbus_connection,
-            timeout,
+            timeout: Duration::from_millis(timeout),
         };
 
         if !accelerometer.has_accelerometer() {
@@ -115,5 +110,9 @@ impl Accelerometer {
     /// Returns the DBus Connection inside this object
     pub fn get_dbus_connection(&self) -> &Connection {
         &self.dbus_connection
+    }
+
+    pub fn get_timeout(&self) -> Duration {
+        self.timeout
     }
 }

@@ -6,6 +6,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
+    time::Duration,
 };
 
 use anyhow::{anyhow, Result};
@@ -347,10 +348,21 @@ impl Socket {
     }
 
     /// Process IPC requests as they come, blocking the running thread if no action is received.
-    pub fn process(&self, state: Arc<Mutex<State>>, should_stop: Arc<AtomicBool>) {
+    pub fn process(
+        &self,
+        state: Arc<Mutex<State>>,
+        should_stop: Arc<AtomicBool>,
+        timeout: Duration,
+    ) {
         while !should_stop.load(Ordering::Relaxed) {
             match self.socket.accept() {
                 Ok((mut stream, _)) => {
+                    if let Err(e) = stream.set_read_timeout(Some(timeout)) {
+                        error!("Couldn't set read timeout on stream:\n{}", e);
+                    };
+                    if let Err(e) = stream.set_write_timeout(Some(timeout)) {
+                        error!("Couldn't set write timeout on stream:\n{}", e);
+                    };
                     if let Err(e) = Self::handle_client(
                         &mut stream,
                         Arc::clone(&state),
@@ -359,7 +371,7 @@ impl Socket {
                         error!("{}", e);
                     }
                 }
-                Err(err) => error!("Couldn't connect to incoming stream: \n{}", err),
+                Err(err) => error!("Couldn't connect to incoming stream:\n{}", err),
             }
         }
     }
@@ -393,20 +405,29 @@ impl Client {
             Ok(s) => s,
             Err(e) => return Err(anyhow!("Couldn't create Writer Buffer: {}", e)),
         });
-
         Ok((reader, writer))
     }
 
     /// Binds the client to the socket, returning the bound client.
-    pub fn bind(socket_path: Option<String>) -> Result<Self> {
+    pub fn bind(socket_path: Option<String>, timeout: Duration) -> Result<Self> {
         let path = match socket_path {
             Some(path) => path,
             None => get_iio_niri_socket_path(),
         };
+
         let connection = match UnixStream::connect(&path) {
             Ok(conn) => conn,
             Err(e) => return Err(anyhow!("Couldn't connect to socket {}:\n{}", &path, e)),
         };
+
+        if let Err(e) = connection.set_read_timeout(Some(timeout)) {
+            return Err(anyhow!("Couldn't set read timeout on stream:\n{}", e));
+        };
+
+        if let Err(e) = connection.set_write_timeout(Some(timeout)) {
+            return Err(anyhow!("Couldn't set write timeout on stream:\n{}", e));
+        };
+
         let buffers = Self::create_buffers(&connection)?;
         Ok(Self {
             reader: buffers.0,

@@ -6,6 +6,7 @@ use std::{
         Arc, Mutex,
     },
     thread::{self, JoinHandle},
+    time::Duration,
 };
 
 use signal_hook::iterator::Signals;
@@ -14,7 +15,11 @@ use signal_hook::{consts::TERM_SIGNALS, iterator::Handle};
 use crate::{app, ipc, orientation, state};
 
 /// Run the listen subcommand
-pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Result<()> {
+pub fn run(
+    args: app::ListenArgs,
+    iio_niri_socket_path: Option<String>,
+    socket_timeout: u64,
+) -> Result<()> {
     debug!("Binding Niri socket...");
     let mut niri_socket = match &args.niri_socket {
         Some(path) => {
@@ -36,15 +41,22 @@ pub fn run(args: app::ListenArgs, iio_niri_socket_path: Option<String>) -> Resul
     let iio_niri_socket = ipc::IioNiriSocket::bind(iio_niri_socket_path)?;
     debug!("Socket created at {}", iio_niri_socket.get_path());
 
-    run_threads(state, args.timeout, niri_socket, iio_niri_socket)
+    run_threads(
+        state,
+        args.dbus_timeout,
+        niri_socket,
+        iio_niri_socket,
+        Duration::from_millis(socket_timeout),
+    )
 }
 
 /// Run the threads used when listening. This function blocks the current thread until all child threads have exited.
 fn run_threads(
     state: state::State,
-    timeout: u64,
+    dbus_timeout: u64,
     niri_socket: ipc::NiriSocket,
     iio_niri_socket: ipc::IioNiriSocket,
+    socket_timeout: Duration,
 ) -> Result<()> {
     debug!("Creating all threads...");
     let should_stop = Arc::new(AtomicBool::new(false));
@@ -58,7 +70,7 @@ fn run_threads(
     debug!("Registering Orientation handler...");
     let orientation_handle = handle_orientation(
         Arc::clone(&state),
-        timeout,
+        dbus_timeout,
         niri_socket,
         Arc::clone(&should_stop),
         signals_handles.0.clone(),
@@ -71,6 +83,7 @@ fn run_threads(
         Arc::clone(&state),
         iio_niri_socket,
         signals_handles.0.clone(),
+        socket_timeout,
     );
     debug!("IPC handler registered.");
 
@@ -84,7 +97,7 @@ fn run_threads(
     }
 
     if should_stop.load(Ordering::Relaxed) && std::fs::exists(&socket_path).unwrap_or_default() {
-        match ipc::Client::bind(Some(socket_path)) {
+        match ipc::Client::bind(Some(socket_path), socket_timeout) {
             Ok(mut client) => {
                 client.send_ipc_request(ipc::IpcAction::Stop())?; // Used to wake the IPC thread for clean up.
             }
@@ -104,9 +117,10 @@ fn handle_ipc(
     state: Arc<Mutex<state::State>>,
     iio_niri_socket: ipc::IioNiriSocket,
     signals_handle: Handle,
+    socket_timeout: Duration,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
-        iio_niri_socket.process(Arc::clone(&state), Arc::clone(&should_stop));
+        iio_niri_socket.process(Arc::clone(&state), Arc::clone(&should_stop), socket_timeout);
         signals_handle.close();
         if let Err(e) = iio_niri_socket.destroy_socket() {
             error!("{}", e);

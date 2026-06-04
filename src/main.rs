@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use log::{error, info};
@@ -19,11 +21,15 @@ fn main() -> Result<()> {
         .init();
 
     let response = match args.command {
-        app::Commands::Listen(listen_args) => listen::run(listen_args, args.socket),
-        app::Commands::Msg(msg_args) => match ipc::Client::bind(args.socket) {
-            Ok(mut client) => client.send_from_args(msg_args),
-            Err(e) => Err(e),
-        },
+        app::Commands::Listen(listen_args) => {
+            listen::run(listen_args, args.socket, args.socket_timeout)
+        }
+        app::Commands::Msg(msg_args) => {
+            match ipc::Client::bind(args.socket, Duration::from_millis(args.socket_timeout)) {
+                Ok(mut client) => client.send_from_args(msg_args),
+                Err(e) => Err(e),
+            }
+        }
         app::Commands::Completions(completions_args) => {
             print_completions(completions_args.shell, &mut app::App::command());
             Ok(())
