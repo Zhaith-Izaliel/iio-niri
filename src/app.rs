@@ -79,6 +79,10 @@ pub struct ListenArgs {
     /// The path to the niri IPC socket.
     #[arg(short, long)]
     pub niri_socket: Option<String>,
+
+    /// Whether to lock the rotation at startup.
+    #[arg(short, long, default_value_t = false)]
+    pub lock_rotation: bool,
 }
 
 /// Defines the arguments passed to the `msg` subcommand

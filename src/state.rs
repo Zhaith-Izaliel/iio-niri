@@ -95,7 +95,7 @@ impl State {
         info!("Using transformation matrix {:?}.", transform);
 
         Ok(Self {
-            lock_rotation: false,
+            lock_rotation: args.lock_rotation,
             monitor,
             mapping: transform,
         })
