@@ -1,7 +1,7 @@
+use crate::state::Transform;
 use clap::{ArgAction, Args, Command, Parser, Subcommand};
 use clap_complete::{generate, Generator, Shell};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
-use niri_ipc::Transform;
 
 /// Print the completion of the given command to the given shell on stdout.
 pub fn print_completions<G: Generator>(generator: G, cmd: &mut Command) {

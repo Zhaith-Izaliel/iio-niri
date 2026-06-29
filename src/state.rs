@@ -1,11 +1,74 @@
 use std::fmt::Display;
 
 use anyhow::{anyhow, Result};
+use clap::ValueEnum;
 use log::{info, warn};
-use niri_ipc::{socket::Socket, Transform};
+use niri_ipc::socket::Socket;
 use serde::{Deserialize, Serialize};
 
 use crate::{app::ListenArgs, monitor};
+
+pub type NiriTransform = niri_ipc::Transform;
+
+/// Output transform, which goes counter-clockwise.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum Transform {
+    /// Untransformed.
+    Normal,
+    /// Rotated by 90°.
+    #[serde(rename = "90")]
+    _90,
+    /// Rotated by 180°.
+    #[serde(rename = "180")]
+    _180,
+    /// Rotated by 270°.
+    #[serde(rename = "270")]
+    _270,
+    /// Flipped horizontally.
+    Flipped,
+    /// Rotated by 90° and flipped horizontally.
+    #[value(name("flipped-90"))]
+    Flipped90,
+    /// Flipped vertically.
+    #[value(name("flipped-180"))]
+    Flipped180,
+    /// Rotated by 270° and flipped horizontally.
+    #[value(name("flipped-270"))]
+    Flipped270,
+    /// Keep the current transform
+    Keep,
+}
+
+impl Transform {
+    /// Map a niri_ipc::Transform to crate::Transform
+    pub fn from_niri_transform(transform: NiriTransform) -> Self {
+        match transform {
+            NiriTransform::Normal => Self::Normal,
+            NiriTransform::_90 => Self::_90,
+            NiriTransform::_180 => Self::_180,
+            NiriTransform::_270 => Self::_270,
+            NiriTransform::Flipped => Self::Flipped,
+            NiriTransform::Flipped90 => Self::Flipped90,
+            NiriTransform::Flipped180 => Self::Flipped180,
+            NiriTransform::Flipped270 => Self::Flipped270,
+        }
+    }
+
+    /// Convert the Transform to a niri_ipc::Transform
+    pub fn to_niri_transform(self) -> NiriTransform {
+        match self {
+            Self::Normal => NiriTransform::Normal,
+            Self::Keep => NiriTransform::Normal,
+            Self::_90 => NiriTransform::_90,
+            Self::_180 => NiriTransform::_180,
+            Self::_270 => NiriTransform::_270,
+            Self::Flipped => NiriTransform::Flipped,
+            Self::Flipped90 => NiriTransform::Flipped90,
+            Self::Flipped180 => NiriTransform::Flipped180,
+            Self::Flipped270 => NiriTransform::Flipped270,
+        }
+    }
+}
 
 /// Maps the accelerometer transforms (normal,left-up,bottom-up,right-up) to Niri's transforms.
 ///
@@ -24,6 +87,7 @@ pub struct TransformMapping {
     pub bottom_up: Transform,
     pub right_up: Transform,
 }
+
 impl TransformMapping {
     /// Creates a mapping using a 4-transforms array.
     pub fn from_transform_vec(transform: Option<Vec<Transform>>) -> Result<TransformMapping> {

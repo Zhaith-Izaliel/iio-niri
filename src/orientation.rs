@@ -11,7 +11,7 @@ use niri_ipc::{socket::Socket, OutputAction, Request};
 use crate::{
     accelerometer::Accelerometer,
     monitor,
-    state::{State, TransformMapping},
+    state::{State, Transform, TransformMapping},
 };
 
 /// Update the given monitor's orientation using the accelerometer orientation.
@@ -44,7 +44,11 @@ fn update_orientation(
         }
     };
 
-    if old_orientation == orientation {
+    if Transform::from_niri_transform(old_orientation) == orientation {
+        return Ok(());
+    }
+
+    if orientation == Transform::Keep {
         return Ok(());
     }
 
@@ -52,7 +56,7 @@ fn update_orientation(
     if let Err(str) = socket.send(Request::Output {
         output: monitor.to_owned(),
         action: OutputAction::Transform {
-            transform: orientation,
+            transform: orientation.to_niri_transform(),
         },
     })? {
         return Err(anyhow!(str));
