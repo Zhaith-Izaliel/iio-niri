@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use dbus::{
-    blocking::{stdintf::org_freedesktop_dbus::Properties, Connection, Proxy},
-    message::MatchRule,
     Message,
+    blocking::{Connection, Proxy, stdintf::org_freedesktop_dbus::Properties},
+    message::MatchRule,
 };
 use log::debug;
 use std::time::Duration;
@@ -20,19 +20,18 @@ impl Accelerometer {
     /// Create the DBus connection to the Accelerometer
     fn create_dbus_connection() -> Result<Connection> {
         debug!("Connecting to the system bus...");
-        let conn = match Connection::new_system() {
-            Ok(it) => it,
-            Err(_) => return Err(anyhow!("Couldn't open a connection to the system bus.")),
+        let Ok(conn) = Connection::new_system() else {
+            return Err(anyhow!("Couldn't open a connection to the system bus."));
         };
         debug!("Connected to the system bus.");
 
         debug!("Setting matches for iio-sensor-proxy...");
         conn.add_match_no_cb("type='signal',interface='org.freedesktop.DBus.Properties'")?;
-        conn.add_match_no_cb(format!("type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged',arg0='{}'", INTERFACE).as_str())?;
+        conn.add_match_no_cb(format!("type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged',arg0='{INTERFACE}'").as_str())?;
 
         conn.add_match(
             MatchRule::new_signal("org.freedesktop.DBus", "PropertiesChanged"),
-            |_: (), _: &Connection, _: &Message| true,
+            |(): (), _: &Connection, _: &Message| true,
         )?;
         debug!("Finished setting matches for iio-sensor-proxy.");
 
@@ -55,7 +54,7 @@ impl Accelerometer {
     }
 
     /// Creates the DBus proxy to query and manage the Accelerometer.
-    pub fn proxy<'a>(&'a self) -> Proxy<'a, &'a Connection> {
+    pub fn proxy(&self) -> Proxy<'_, &Connection> {
         Proxy::new(INTERFACE, PATH, self.timeout, &self.dbus_connection)
     }
 
@@ -83,7 +82,7 @@ impl Accelerometer {
                 .method_call(INTERFACE, "ReleaseAccelerometer", ());
 
         match result {
-            Ok(_) => {
+            Ok(()) => {
                 debug!("Accelerometer released.");
                 Ok(())
             }
@@ -99,7 +98,7 @@ impl Accelerometer {
                 .method_call(INTERFACE, "ClaimAccelerometer", ());
 
         match result {
-            Ok(_) => {
+            Ok(()) => {
                 debug!("Accelerometer claimed.");
                 Ok(())
             }

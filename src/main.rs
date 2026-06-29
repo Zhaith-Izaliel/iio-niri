@@ -1,10 +1,8 @@
-use std::time::Duration;
-
+use crate::app::print_completions;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use log::{error, info};
-
-use crate::app::print_completions;
+use std::time::Duration;
 
 mod accelerometer;
 mod app;
@@ -40,7 +38,7 @@ fn main() -> Result<()> {
     match response {
         Ok(()) => Ok(()),
         Err(e) => {
-            error!("{}", e);
+            error!("{e}");
             Err(e)
         }
     }

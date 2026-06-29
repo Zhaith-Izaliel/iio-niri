@@ -1,71 +1,39 @@
+use crate::{app::ListenArgs, monitor};
+use anyhow::{anyhow, Result};
+use clap::builder::PossibleValue;
+use log::{info, warn};
+use niri_ipc::{socket::Socket, Transform};
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-use anyhow::{anyhow, Result};
-use clap::ValueEnum;
-use log::{info, warn};
-use niri_ipc::socket::Socket;
-use serde::{Deserialize, Serialize};
-
-use crate::{app::ListenArgs, monitor};
-
-pub type NiriTransform = niri_ipc::Transform;
-
-/// Output transform, which goes counter-clockwise.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum Transform {
-    /// Untransformed.
-    Normal,
-    /// Rotated by 90°.
-    #[serde(rename = "90")]
-    _90,
-    /// Rotated by 180°.
-    #[serde(rename = "180")]
-    _180,
-    /// Rotated by 270°.
-    #[serde(rename = "270")]
-    _270,
-    /// Flipped horizontally.
-    Flipped,
-    /// Rotated by 90° and flipped horizontally.
-    #[value(name("flipped-90"))]
-    Flipped90,
-    /// Flipped vertically.
-    #[value(name("flipped-180"))]
-    Flipped180,
-    /// Rotated by 270° and flipped horizontally.
-    #[value(name("flipped-270"))]
-    Flipped270,
-    /// Keep the current transform
-    Keep,
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransformAction {
+    Set(Transform),
+    KeepPrevious,
 }
 
-impl Transform {
-    /// Map a niri_ipc::Transform to crate::Transform
-    pub fn from_niri_transform(transform: NiriTransform) -> Self {
-        match transform {
-            NiriTransform::Normal => Self::Normal,
-            NiriTransform::_90 => Self::_90,
-            NiriTransform::_180 => Self::_180,
-            NiriTransform::_270 => Self::_270,
-            NiriTransform::Flipped => Self::Flipped,
-            NiriTransform::Flipped90 => Self::Flipped90,
-            NiriTransform::Flipped180 => Self::Flipped180,
-            NiriTransform::Flipped270 => Self::Flipped270,
-        }
+impl clap::ValueEnum for TransformAction {
+    fn value_variants<'a>() -> &'a [Self] {
+        // sadly, clap doesnt nicely support nested ValueEnum, exactly because of this
+        // they at some point decided on returning a fixed length slice which means
+        // its not possible to just call Transform::value_variants here...
+        &[
+            Self::Set(Transform::Normal),
+            Self::Set(Transform::_90),
+            Self::Set(Transform::_180),
+            Self::Set(Transform::_270),
+            Self::Set(Transform::Flipped),
+            Self::Set(Transform::Flipped90),
+            Self::Set(Transform::Flipped180),
+            Self::Set(Transform::Flipped270),
+            Self::KeepPrevious,
+        ]
     }
 
-    /// Convert the Transform to a niri_ipc::Transform
-    pub fn to_niri_transform(self) -> NiriTransform {
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
         match self {
-            Self::Normal => NiriTransform::Normal,
-            Self::Keep => NiriTransform::Normal,
-            Self::_90 => NiriTransform::_90,
-            Self::_180 => NiriTransform::_180,
-            Self::_270 => NiriTransform::_270,
-            Self::Flipped => NiriTransform::Flipped,
-            Self::Flipped90 => NiriTransform::Flipped90,
-            Self::Flipped180 => NiriTransform::Flipped180,
-            Self::Flipped270 => NiriTransform::Flipped270,
+            TransformAction::Set(transform) => transform.to_possible_value(),
+            TransformAction::KeepPrevious => Some(PossibleValue::new("keep")),
         }
     }
 }
@@ -82,41 +50,41 @@ impl Transform {
 /// - right-up -> 270
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransformMapping {
-    pub normal: Transform,
-    pub left_up: Transform,
-    pub bottom_up: Transform,
-    pub right_up: Transform,
+    pub normal: TransformAction,
+    pub left_up: TransformAction,
+    pub bottom_up: TransformAction,
+    pub right_up: TransformAction,
 }
 
 impl TransformMapping {
     /// Creates a mapping using a 4-transforms array.
-    pub fn from_transform_vec(transform: Option<Vec<Transform>>) -> Result<TransformMapping> {
+    pub fn from_transform_vec(transform: Option<Vec<TransformAction>>) -> Result<TransformMapping> {
         match transform {
             Some(vec) => {
-                if vec.len() != 4 {
-                    Err(anyhow!(
-                        "Couldn't create the TransformMapping using the provided Vector."
-                    ))
-                } else {
+                if vec.len() == 4 {
                     Ok(TransformMapping {
                         normal: vec[0],
                         left_up: vec[1],
                         bottom_up: vec[2],
                         right_up: vec[3],
                     })
+                } else {
+                    Err(anyhow!(
+                        "Couldn't create the TransformMapping using the provided Vector."
+                    ))
                 }
             }
             None => Ok(TransformMapping {
-                normal: Transform::Normal,
-                left_up: Transform::_90,
-                bottom_up: Transform::_180,
-                right_up: Transform::_270,
+                normal: TransformAction::Set(Transform::Normal),
+                left_up: TransformAction::Set(Transform::_90),
+                bottom_up: TransformAction::Set(Transform::_180),
+                right_up: TransformAction::Set(Transform::_270),
             }),
         }
     }
 
     /// Parse the given accelerometer to its own Transform
-    pub fn parse_orientation(&self, orientation: &str) -> Transform {
+    pub fn parse_orientation(&self, orientation: &str) -> TransformAction {
         match orientation {
             "normal" => self.normal,
             "left-up" => self.left_up,
@@ -129,11 +97,10 @@ impl TransformMapping {
 
 impl Display for TransformMapping {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let string = match serde_json::to_string(self) {
-            Ok(s) => s,
-            Err(_) => return Err(std::fmt::Error),
+        let Ok(string) = serde_json::to_string(self) else {
+            return Err(std::fmt::Error);
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -153,10 +120,10 @@ pub struct State {
 impl State {
     /// Create the state from the command line arguments
     pub fn from_args(niri_socket: &mut Socket, args: &ListenArgs) -> Result<Self> {
-        let monitor = monitor::get_monitor(niri_socket, args.monitor.to_owned())?;
-        warn!("Using monitor {}.", monitor);
-        let transform = TransformMapping::from_transform_vec(args.transform.to_owned())?;
-        info!("Using transformation matrix {:?}.", transform);
+        let monitor = monitor::get_monitor(niri_socket, args.monitor.clone())?;
+        warn!("Using monitor {monitor}.");
+        let transform = TransformMapping::from_transform_vec(args.transform.clone())?;
+        info!("Using transformation matrix {transform:?}.");
 
         Ok(Self {
             lock_rotation: args.lock_rotation,

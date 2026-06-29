@@ -1,17 +1,14 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
-};
-
-use anyhow::{anyhow, Result};
-use log::{debug, info};
-
-use niri_ipc::{socket::Socket, OutputAction, Request};
-
 use crate::{
     accelerometer::Accelerometer,
     monitor,
-    state::{State, Transform, TransformMapping},
+    state::{State, TransformMapping},
+};
+use anyhow::{anyhow, Result};
+use log::{debug, info};
+use niri_ipc::{socket::Socket, LogicalOutput, Output, OutputAction, Request};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
 };
 
 /// Update the given monitor's orientation using the accelerometer orientation.
@@ -21,52 +18,42 @@ fn update_orientation(
     acc_orientation: &str,
     matrix: &TransformMapping,
 ) -> Result<()> {
-    let orientation = matrix.parse_orientation(acc_orientation);
-
-    let outputs = monitor::get_monitors(socket)?;
-
-    let old_orientation = match outputs.get(monitor) {
-        Some(output) => {
-            if let Some(logical) = output.logical {
-                logical.transform
-            } else {
-                return Err(anyhow!(
+    match matrix.parse_orientation(acc_orientation) {
+        crate::state::TransformAction::KeepPrevious => Ok(()),
+        crate::state::TransformAction::Set(orientation) => {
+            match monitor::get_monitors(socket)?.get(monitor) {
+                Some(&Output {
+                    logical:
+                        Some(LogicalOutput {
+                            transform: old_orientation,
+                            ..
+                        }),
+                    ..
+                }) if old_orientation != orientation => {
+                    debug!("Updating screen orientation...");
+                    if let Err(str) = socket.send(Request::Output {
+                        output: monitor.to_owned(),
+                        action: OutputAction::Transform {
+                            transform: orientation,
+                        },
+                    })? {
+                        return Err(anyhow!(str));
+                    }
+                    info!("Updated orientation from {old_orientation:?} to {orientation:?}.");
+                    Ok(())
+                }
+                Some(Output { logical: None, .. }) => Err(anyhow!(
                     "Couldn't get the logical output information from the provided monitor ({}).",
                     monitor
-                ));
+                )),
+                None => Err(anyhow!(
+                    "Couldn't find the provided monitor ({}) in the list of outputs.",
+                    monitor
+                )),
+                _ => Ok(()),
             }
         }
-        None => {
-            return Err(anyhow!(
-                "Couldn't find the provided monitor ({}) in the list of outputs.",
-                monitor
-            ));
-        }
-    };
-
-    if Transform::from_niri_transform(old_orientation) == orientation {
-        return Ok(());
     }
-
-    if orientation == Transform::Keep {
-        return Ok(());
-    }
-
-    debug!("Updating screen orientation...");
-    if let Err(str) = socket.send(Request::Output {
-        output: monitor.to_owned(),
-        action: OutputAction::Transform {
-            transform: orientation.to_niri_transform(),
-        },
-    })? {
-        return Err(anyhow!(str));
-    };
-    info!(
-        "Updated orientation from {:?} to {:?}.",
-        old_orientation, orientation
-    );
-
-    Ok(())
 }
 
 /// Defines the thread routine to listen to orientation changes.
@@ -93,13 +80,10 @@ pub fn change_orientation_routine(
             let orientation = accelerometer.get_orientation()?;
             debug!("Orientation obtained.");
 
-            let state = match state.lock() {
-                Ok(s) => s,
-                Err(_) => {
-                    return Err(anyhow!(
-                        "Couldn't lock on state because the data is poisonned."
-                    ));
-                }
+            let Ok(state) = state.lock() else {
+                return Err(anyhow!(
+                    "Couldn't lock on state because the data is poisonned."
+                ));
             };
 
             if !state.lock_rotation {
