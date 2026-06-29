@@ -1,7 +1,7 @@
 use crate::{
     accelerometer::Accelerometer,
     monitor,
-    state::{State, TransformMapping},
+    state::{State, TransformAction, TransformMapping},
 };
 use anyhow::{anyhow, Result};
 use log::{debug, info};
@@ -19,40 +19,38 @@ fn update_orientation(
     matrix: &TransformMapping,
 ) -> Result<()> {
     match matrix.parse_orientation(acc_orientation) {
-        crate::state::TransformAction::KeepPrevious => Ok(()),
-        crate::state::TransformAction::Set(orientation) => {
-            match monitor::get_monitors(socket)?.get(monitor) {
-                Some(&Output {
-                    logical:
-                        Some(LogicalOutput {
-                            transform: old_orientation,
-                            ..
-                        }),
-                    ..
-                }) if old_orientation != orientation => {
-                    debug!("Updating screen orientation...");
-                    if let Err(str) = socket.send(Request::Output {
-                        output: monitor.to_owned(),
-                        action: OutputAction::Transform {
-                            transform: orientation,
-                        },
-                    })? {
-                        return Err(anyhow!(str));
-                    }
-                    info!("Updated orientation from {old_orientation:?} to {orientation:?}.");
-                    Ok(())
+        TransformAction::KeepPrevious => Ok(()),
+        TransformAction::Set(orientation) => match monitor::get_monitors(socket)?.get(monitor) {
+            Some(&Output {
+                logical:
+                    Some(LogicalOutput {
+                        transform: old_orientation,
+                        ..
+                    }),
+                ..
+            }) if old_orientation != orientation => {
+                debug!("Updating screen orientation...");
+                if let Err(str) = socket.send(Request::Output {
+                    output: monitor.to_owned(),
+                    action: OutputAction::Transform {
+                        transform: orientation,
+                    },
+                })? {
+                    return Err(anyhow!(str));
                 }
-                Some(Output { logical: None, .. }) => Err(anyhow!(
-                    "Couldn't get the logical output information from the provided monitor ({}).",
-                    monitor
-                )),
-                None => Err(anyhow!(
-                    "Couldn't find the provided monitor ({}) in the list of outputs.",
-                    monitor
-                )),
-                _ => Ok(()),
+                info!("Updated orientation from {old_orientation:?} to {orientation:?}.");
+                Ok(())
             }
-        }
+            Some(Output { logical: None, .. }) => Err(anyhow!(
+                "Couldn't get the logical output information from the provided monitor ({}).",
+                monitor
+            )),
+            None => Err(anyhow!(
+                "Couldn't find the provided monitor ({}) in the list of outputs.",
+                monitor
+            )),
+            _ => Ok(()),
+        },
     }
 }
 
