@@ -1,7 +1,8 @@
 use clap::{ArgAction, Args, Command, Parser, Subcommand};
 use clap_complete::{generate, Generator, Shell};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
-use niri_ipc::Transform;
+
+use crate::state::TransformAction;
 
 /// Print the completion of the given command to the given shell on stdout.
 pub fn print_completions<G: Generator>(generator: G, cmd: &mut Command) {
@@ -63,6 +64,8 @@ pub struct ListenArgs {
     /// - left-up -> normal
     /// - bottom-up -> 180
     /// - right-up -> 270
+    ///
+    /// Additionally, the special value "keep" can be used to keep the previous orientation.
     #[clap(
         short = 'd',
         long,
@@ -70,7 +73,7 @@ pub struct ListenArgs {
         num_args = 4,
         verbatim_doc_comment
     )]
-    pub transform: Option<Vec<Transform>>,
+    pub transform: Option<Vec<TransformAction>>,
 
     /// The number of milliseconds before timeout for a dbus request
     #[arg(short = 't', long = "timeout", default_value_t = 5000)]
@@ -183,6 +186,8 @@ pub struct ChangeTransformArgs {
     /// - left-up -> normal
     /// - bottom-up -> 180
     /// - right-up -> 270
+    ///
+    /// Additionally, the special value "keep" can be used to keep the previous orientation.
     #[clap(num_args = 4, verbatim_doc_comment)]
-    pub transform: Vec<Transform>,
+    pub transform: Vec<TransformAction>,
 }

@@ -1,12 +1,43 @@
 use std::fmt::Display;
 
 use anyhow::{anyhow, Result};
+use clap::builder::PossibleValue;
 use log::{info, warn};
 use niri_ipc::{socket::Socket, Transform};
 use serde::{Deserialize, Serialize};
 
 use crate::{app::ListenArgs, monitor};
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransformAction {
+    Set(Transform),
+    KeepPrevious,
+}
+impl clap::ValueEnum for TransformAction {
+    fn value_variants<'a>() -> &'a [Self] {
+        // sadly, clap doesnt nicely support nested ValueEnum, exactly because of this
+        // they at some point decided on returning a fixed length slice which means
+        // its not possible to just call Transform::value_variants here...
+        &[
+            Self::Set(Transform::Normal),
+            Self::Set(Transform::_90),
+            Self::Set(Transform::_180),
+            Self::Set(Transform::_270),
+            Self::Set(Transform::Flipped),
+            Self::Set(Transform::Flipped90),
+            Self::Set(Transform::Flipped180),
+            Self::Set(Transform::Flipped270),
+            Self::KeepPrevious,
+        ]
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        match self {
+            TransformAction::Set(transform) => transform.to_possible_value(),
+            TransformAction::KeepPrevious => Some(PossibleValue::new("keep")),
+        }
+    }
+}
 /// Maps the accelerometer transforms (normal,left-up,bottom-up,right-up) to Niri's transforms.
 ///
 /// In some devices the accelerometer orientation doesn't match the display orientation.
@@ -19,14 +50,14 @@ use crate::{app::ListenArgs, monitor};
 /// - right-up -> 270
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransformMapping {
-    pub normal: Transform,
-    pub left_up: Transform,
-    pub bottom_up: Transform,
-    pub right_up: Transform,
+    pub normal: TransformAction,
+    pub left_up: TransformAction,
+    pub bottom_up: TransformAction,
+    pub right_up: TransformAction,
 }
 impl TransformMapping {
     /// Creates a mapping using a 4-transforms array.
-    pub fn from_transform_vec(transform: Option<Vec<Transform>>) -> Result<TransformMapping> {
+    pub fn from_transform_vec(transform: Option<Vec<TransformAction>>) -> Result<TransformMapping> {
         match transform {
             Some(vec) => {
                 if vec.len() != 4 {
@@ -43,16 +74,16 @@ impl TransformMapping {
                 }
             }
             None => Ok(TransformMapping {
-                normal: Transform::Normal,
-                left_up: Transform::_90,
-                bottom_up: Transform::_180,
-                right_up: Transform::_270,
+                normal: TransformAction::Set(Transform::Normal),
+                left_up: TransformAction::Set(Transform::_90),
+                bottom_up: TransformAction::Set(Transform::_180),
+                right_up: TransformAction::Set(Transform::_270),
             }),
         }
     }
 
     /// Parse the given accelerometer to its own Transform
-    pub fn parse_orientation(&self, orientation: &str) -> Transform {
+    pub fn parse_orientation(&self, orientation: &str) -> TransformAction {
         match orientation {
             "normal" => self.normal,
             "left-up" => self.left_up,

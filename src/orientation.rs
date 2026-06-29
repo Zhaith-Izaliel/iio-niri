@@ -6,7 +6,7 @@ use std::sync::{
 use anyhow::{anyhow, Result};
 use log::{debug, info};
 
-use niri_ipc::{socket::Socket, OutputAction, Request};
+use niri_ipc::{socket::Socket, LogicalOutput, Output, OutputAction, Request};
 
 use crate::{
     accelerometer::Accelerometer,
@@ -21,48 +21,45 @@ fn update_orientation(
     acc_orientation: &str,
     matrix: &TransformMapping,
 ) -> Result<()> {
-    let orientation = matrix.parse_orientation(acc_orientation);
-
-    let outputs = monitor::get_monitors(socket)?;
-
-    let old_orientation = match outputs.get(monitor) {
-        Some(output) => {
-            if let Some(logical) = output.logical {
-                logical.transform
-            } else {
-                return Err(anyhow!(
+    match matrix.parse_orientation(acc_orientation) {
+        crate::state::TransformAction::KeepPrevious => Ok(()),
+        crate::state::TransformAction::Set(orientation) => {
+            match monitor::get_monitors(socket)?.get(monitor) {
+                Some(&Output {
+                    logical:
+                        Some(LogicalOutput {
+                            transform: old_orientation,
+                            ..
+                        }),
+                    ..
+                }) if old_orientation != orientation => {
+                    debug!("Updating screen orientation...");
+                    if let Err(str) = socket.send(Request::Output {
+                        output: monitor.to_owned(),
+                        action: OutputAction::Transform {
+                            transform: orientation,
+                        },
+                    })? {
+                        return Err(anyhow!(str));
+                    };
+                    info!(
+                        "Updated orientation from {:?} to {:?}.",
+                        old_orientation, orientation
+                    );
+                    Ok(())
+                }
+                Some(Output { logical: None, .. }) => Err(anyhow!(
                     "Couldn't get the logical output information from the provided monitor ({}).",
                     monitor
-                ));
+                )),
+                None => Err(anyhow!(
+                    "Couldn't find the provided monitor ({}) in the list of outputs.",
+                    monitor
+                )),
+                _ => Ok(()),
             }
         }
-        None => {
-            return Err(anyhow!(
-                "Couldn't find the provided monitor ({}) in the list of outputs.",
-                monitor
-            ));
-        }
-    };
-
-    if old_orientation == orientation {
-        return Ok(());
     }
-
-    debug!("Updating screen orientation...");
-    if let Err(str) = socket.send(Request::Output {
-        output: monitor.to_owned(),
-        action: OutputAction::Transform {
-            transform: orientation,
-        },
-    })? {
-        return Err(anyhow!(str));
-    };
-    info!(
-        "Updated orientation from {:?} to {:?}.",
-        old_orientation, orientation
-    );
-
-    Ok(())
 }
 
 /// Defines the thread routine to listen to orientation changes.
