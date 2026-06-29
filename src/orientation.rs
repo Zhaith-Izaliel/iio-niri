@@ -1,17 +1,14 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
-};
-
-use anyhow::{anyhow, Result};
-use log::{debug, info};
-
-use niri_ipc::{socket::Socket, LogicalOutput, Output, OutputAction, Request};
-
 use crate::{
     accelerometer::Accelerometer,
     monitor,
     state::{State, TransformMapping},
+};
+use anyhow::{anyhow, Result};
+use log::{debug, info};
+use niri_ipc::{socket::Socket, LogicalOutput, Output, OutputAction, Request};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
 };
 
 /// Update the given monitor's orientation using the accelerometer orientation.
@@ -41,11 +38,8 @@ fn update_orientation(
                         },
                     })? {
                         return Err(anyhow!(str));
-                    };
-                    info!(
-                        "Updated orientation from {:?} to {:?}.",
-                        old_orientation, orientation
-                    );
+                    }
+                    info!("Updated orientation from {old_orientation:?} to {orientation:?}.");
                     Ok(())
                 }
                 Some(Output { logical: None, .. }) => Err(anyhow!(
@@ -86,13 +80,10 @@ pub fn change_orientation_routine(
             let orientation = accelerometer.get_orientation()?;
             debug!("Orientation obtained.");
 
-            let state = match state.lock() {
-                Ok(s) => s,
-                Err(_) => {
-                    return Err(anyhow!(
-                        "Couldn't lock on state because the data is poisonned."
-                    ));
-                }
+            let Ok(state) = state.lock() else {
+                return Err(anyhow!(
+                    "Couldn't lock on state because the data is poisonned."
+                ));
             };
 
             if !state.lock_rotation {

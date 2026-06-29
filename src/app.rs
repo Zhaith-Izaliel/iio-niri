@@ -1,8 +1,7 @@
+use crate::state::TransformAction;
 use clap::{ArgAction, Args, Command, Parser, Subcommand};
 use clap_complete::{generate, Generator, Shell};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
-
-use crate::state::TransformAction;
 
 /// Print the completion of the given command to the given shell on stdout.
 pub fn print_completions<G: Generator>(generator: G, cmd: &mut Command) {
@@ -58,7 +57,7 @@ pub struct ListenArgs {
     ///
     /// In some devices the accelerometer orientation doesn't match the display orientation.
     /// This option allows you to provide the mapping from your accelerometer orientation to Niri's transform
-    /// Passing a value such as 90,normal,180,270 will provide the following accelerometer mapping:
+    /// Passing a value such as `90 normal 180 270` will provide the following accelerometer mapping:
     ///
     /// - normal -> 90
     /// - left-up -> normal
@@ -66,13 +65,7 @@ pub struct ListenArgs {
     /// - right-up -> 270
     ///
     /// Additionally, the special value "keep" can be used to keep the previous orientation.
-    #[clap(
-        short = 'd',
-        long,
-        value_delimiter = ',',
-        num_args = 4,
-        verbatim_doc_comment
-    )]
+    #[clap(short = 'd', long, num_args = 4, verbatim_doc_comment)]
     pub transform: Option<Vec<TransformAction>>,
 
     /// The number of milliseconds before timeout for a dbus request
@@ -180,7 +173,7 @@ pub struct ChangeTransformArgs {
     ///
     /// In some devices the accelerometer orientation doesn't match the display orientation
     /// This option allows you to provide the mapping from your accelerometer orientation to Niri's transform
-    /// Passing a value such as 90,normal,180,270 will provide the following accelerometer mapping:
+    /// Passing a value such as `90 normal 180 270` will provide the following accelerometer mapping:
     ///
     /// - normal -> 90
     /// - left-up -> normal

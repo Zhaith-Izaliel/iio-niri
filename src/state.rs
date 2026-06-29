@@ -1,18 +1,17 @@
-use std::fmt::Display;
-
+use crate::{app::ListenArgs, monitor};
 use anyhow::{anyhow, Result};
 use clap::builder::PossibleValue;
 use log::{info, warn};
 use niri_ipc::{socket::Socket, Transform};
 use serde::{Deserialize, Serialize};
-
-use crate::{app::ListenArgs, monitor};
+use std::fmt::Display;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransformAction {
     Set(Transform),
     KeepPrevious,
 }
+
 impl clap::ValueEnum for TransformAction {
     fn value_variants<'a>() -> &'a [Self] {
         // sadly, clap doesnt nicely support nested ValueEnum, exactly because of this
@@ -38,6 +37,7 @@ impl clap::ValueEnum for TransformAction {
         }
     }
 }
+
 /// Maps the accelerometer transforms (normal,left-up,bottom-up,right-up) to Niri's transforms.
 ///
 /// In some devices the accelerometer orientation doesn't match the display orientation.
@@ -55,22 +55,23 @@ pub struct TransformMapping {
     pub bottom_up: TransformAction,
     pub right_up: TransformAction,
 }
+
 impl TransformMapping {
     /// Creates a mapping using a 4-transforms array.
     pub fn from_transform_vec(transform: Option<Vec<TransformAction>>) -> Result<TransformMapping> {
         match transform {
             Some(vec) => {
-                if vec.len() != 4 {
-                    Err(anyhow!(
-                        "Couldn't create the TransformMapping using the provided Vector."
-                    ))
-                } else {
+                if vec.len() == 4 {
                     Ok(TransformMapping {
                         normal: vec[0],
                         left_up: vec[1],
                         bottom_up: vec[2],
                         right_up: vec[3],
                     })
+                } else {
+                    Err(anyhow!(
+                        "Couldn't create the TransformMapping using the provided Vector."
+                    ))
                 }
             }
             None => Ok(TransformMapping {
@@ -96,11 +97,10 @@ impl TransformMapping {
 
 impl Display for TransformMapping {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let string = match serde_json::to_string(self) {
-            Ok(s) => s,
-            Err(_) => return Err(std::fmt::Error),
+        let Ok(string) = serde_json::to_string(self) else {
+            return Err(std::fmt::Error);
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -120,10 +120,10 @@ pub struct State {
 impl State {
     /// Create the state from the command line arguments
     pub fn from_args(niri_socket: &mut Socket, args: &ListenArgs) -> Result<Self> {
-        let monitor = monitor::get_monitor(niri_socket, args.monitor.to_owned())?;
-        warn!("Using monitor {}.", monitor);
-        let transform = TransformMapping::from_transform_vec(args.transform.to_owned())?;
-        info!("Using transformation matrix {:?}.", transform);
+        let monitor = monitor::get_monitor(niri_socket, args.monitor.clone())?;
+        warn!("Using monitor {monitor}.");
+        let transform = TransformMapping::from_transform_vec(args.transform.clone())?;
+        info!("Using transformation matrix {transform:?}.");
 
         Ok(Self {
             lock_rotation: args.lock_rotation,

@@ -1,18 +1,16 @@
-use anyhow::{Result, anyhow};
+use crate::{app, ipc, orientation, state};
+use anyhow::{anyhow, Result};
 use log::{debug, error, info, warn};
+use signal_hook::iterator::Signals;
+use signal_hook::{consts::TERM_SIGNALS, iterator::Handle};
 use std::{
     sync::{
-        Arc, Mutex,
         atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
     },
     thread::{self, JoinHandle},
     time::Duration,
 };
-
-use signal_hook::iterator::Signals;
-use signal_hook::{consts::TERM_SIGNALS, iterator::Handle};
-
-use crate::{app, ipc, orientation, state};
 
 /// Run the listen subcommand
 pub fn run(
@@ -21,15 +19,12 @@ pub fn run(
     socket_timeout: u64,
 ) -> Result<()> {
     debug!("Binding Niri socket...");
-    let mut niri_socket = match &args.niri_socket {
-        Some(path) => {
-            info!("Using Niri socket at {}.", path);
-            ipc::NiriSocket::connect_to(path)?
-        }
-        None => {
-            warn!("Using default Niri socket.");
-            ipc::NiriSocket::connect()?
-        }
+    let mut niri_socket = if let Some(path) = &args.niri_socket {
+        info!("Using Niri socket at {path}.");
+        ipc::NiriSocket::connect_to(path)?
+    } else {
+        warn!("Using default Niri socket.");
+        ipc::NiriSocket::connect()?
     };
     debug!("Niri socket bound!");
 
@@ -123,7 +118,7 @@ fn handle_ipc(
         iio_niri_socket.process(Arc::clone(&state), Arc::clone(&should_stop), socket_timeout);
         signals_handle.close();
         if let Err(e) = iio_niri_socket.destroy_socket() {
-            error!("{}", e);
+            error!("{e}");
         }
     })
 }
@@ -164,9 +159,9 @@ fn handle_orientation(
             niri_socket,
             Arc::clone(&should_stop),
         ) {
-            error!("{}", e);
+            error!("{e}");
             should_stop.store(true, Ordering::Relaxed);
-        };
+        }
         signals_handle.close();
     })
 }

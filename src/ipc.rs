@@ -1,3 +1,11 @@
+use crate::{
+    app::{MsgArgs, MsgSubcommandArgs},
+    state::{State, TransformMapping},
+};
+use anyhow::{anyhow, Result};
+use log::{debug, error};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::{
     fs,
     io::{BufRead, BufReader, BufWriter, Write},
@@ -9,22 +17,12 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{anyhow, Result};
-use log::{debug, error};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-
-use crate::{
-    app::{MsgArgs, MsgSubcommandArgs},
-    state::{State, TransformMapping},
-};
-
 /// Returns the IIO-Niri socket default directory
 fn get_iio_niri_default_socket_directory() -> String {
     match std::env::var("XDG_RUNTIME_DIR") {
         Ok(val) => val,
         Err(e) => {
-            error!("Couldn't get XDG_RUNTIME_DIR:\n{}", e);
+            error!("Couldn't get XDG_RUNTIME_DIR:\n{e}");
             String::from("/tmp")
         }
     }
@@ -39,7 +37,7 @@ pub fn get_iio_niri_socket_path() -> String {
         match wayland_display {
             Ok(val) => val,
             Err(e) => {
-                error!("Couldn't get WAYLAND_DISPLAY:\n{}", e);
+                error!("Couldn't get WAYLAND_DISPLAY:\n{e}");
                 String::from("unknown")
             }
         }
@@ -100,23 +98,18 @@ impl IpcAction {
             return Err(anyhow!("The IpcAction JSON is malformed."));
         }
 
-        let action = match json.get("action") {
-            Some(v) => v,
-            None => {
-                return Err(anyhow!(
-                    "The IpcAction JSON doesn't contain a field `action`"
-                ))
-            }
+        let Some(action) = json.get("action") else {
+            return Err(anyhow!(
+                "The IpcAction JSON doesn't contain a field `action`"
+            ));
         };
 
-        let action = match action.as_str() {
-            Some(s) => s,
-            None => return Err(anyhow!("The `action` field is not a String.")),
+        let Some(action) = action.as_str() else {
+            return Err(anyhow!("The `action` field is not a String."));
         };
 
-        let value = match json.get("arg") {
-            Some(v) => v,
-            None => return Err(anyhow!("The IpcAction JSON doesn't contain a field `arg`")),
+        let Some(value) = json.get("arg") else {
+            return Err(anyhow!("The IpcAction JSON doesn't contain a field `arg`"));
         };
 
         match action {
@@ -136,7 +129,12 @@ impl IpcAction {
             "change_transform" => {
                 let mapping = match serde_json::from_value::<TransformMapping>(value.to_owned()) {
                     Ok(m) => m,
-                    Err(e) => return Err(anyhow!("The `arg` for an action of type `change_transform` couldn't be serialized into a TransformMapping:\n{}", e))
+                    Err(e) => {
+                        return Err(anyhow!(
+                            "The `arg` for an action of type `change_transform` couldn't be serialized into a TransformMapping:\n{}",
+                            e
+                        ));
+                    }
                 };
                 Ok(IpcAction::ChangeTransform(mapping))
             }
@@ -154,10 +152,12 @@ impl IpcAction {
                 "action": self.action_string(),
                 "arg": r
             }),
-            Self::ToggleLockRotation() => json!({
-                "action": self.action_string(),
-                "arg": null,
-            }),
+            Self::ToggleLockRotation() | Self::Ping() | Self::Stop() | Self::PrintState() => {
+                json!({
+                    "action": self.action_string(),
+                    "arg": null,
+                })
+            }
             Self::ChangeMonitor(monitor) => json!({
                 "action": self.action_string(),
                 "arg": monitor
@@ -165,18 +165,6 @@ impl IpcAction {
             Self::ChangeTransform(transform) => json!({
                 "action": self.action_string(),
                 "arg": transform
-            }),
-            Self::Ping() => json!({
-                "action": self.action_string(),
-                "arg": null
-            }),
-            Self::Stop() => json!({
-                "action": self.action_string(),
-                "arg": null
-            }),
-            Self::PrintState() => json!({
-                "action": self.action_string(),
-                "arg": null
             }),
         }
     }
@@ -227,15 +215,12 @@ impl Socket {
         let mut client = Client::bind_to_stream(stream)?;
         debug!("Reading request from client...");
         let request = client.receive()?;
-        debug!("Request read: {}", request);
+        debug!("Request read: {request}");
 
-        let mut state = match state.lock() {
-            Ok(s) => s,
-            Err(_) => {
-                return Err(anyhow!(
-                    "Couldn't lock on state because the value is poisonned."
-                ))
-            }
+        let Ok(mut state) = state.lock() else {
+            return Err(anyhow!(
+                "Couldn't lock on state because the value is poisonned."
+            ));
         };
 
         debug!("Parsing request as JSON...");
@@ -253,7 +238,7 @@ impl Socket {
                 Err(e) => return Err(anyhow!("Couldn't parse the response to send: {}", e)),
             },
         };
-        debug!("Response constructed: {}", response);
+        debug!("Response constructed: {response}");
         client.send(response)
     }
 
@@ -267,10 +252,7 @@ impl Socket {
             IpcAction::LockRotation(b) => {
                 let old = state.lock_rotation;
                 state.lock_rotation = b;
-                debug!(
-                    "Changing `state.lock_rotation`. Old value: `{}`, New value: `{}`",
-                    old, b
-                );
+                debug!("Changing `state.lock_rotation`. Old value: `{old}`, New value: `{b}`");
                 let response = match serde_json::to_string(&Response::new_ok(old)) {
                     Ok(s) => s,
                     Err(e) => return Err(anyhow!("Couldn't parse response to the client: {}", e)),
@@ -292,11 +274,8 @@ impl Socket {
             }
             IpcAction::ChangeMonitor(monitor) => {
                 let old = state.monitor.clone();
-                state.monitor = monitor.clone();
-                debug!(
-                    "Changing `state.monitor`. Old value: `{}`, New value: `{}`",
-                    old, monitor
-                );
+                state.monitor.clone_from(&monitor);
+                debug!("Changing `state.monitor`. Old value: `{old}`, New value: `{monitor}`");
                 let response = match serde_json::to_string(&Response::new(String::from("ok"), old))
                 {
                     Ok(s) => s,
@@ -306,11 +285,8 @@ impl Socket {
             }
             IpcAction::ChangeTransform(mapping) => {
                 let old = state.mapping.clone();
-                state.mapping = mapping.clone();
-                debug!(
-                    "Changing `state.mapping`. Old value: `{}`, New value: `{}`",
-                    old, mapping
-                );
+                state.mapping.clone_from(&mapping);
+                debug!("Changing `state.mapping`. Old value: `{old}`, New value: `{mapping}`");
                 let response = match serde_json::to_string(&Response::new_ok(old)) {
                     Ok(s) => s,
                     Err(e) => return Err(anyhow!("Couldn't parse response to the client: {}", e)),
@@ -332,7 +308,7 @@ impl Socket {
                     match serde_json::to_string(&Response::new_ok(String::from("Stopping!"))) {
                         Ok(s) => s,
                         Err(e) => {
-                            return Err(anyhow!("Couldn't parse response to the client: {}", e))
+                            return Err(anyhow!("Couldn't parse response to the client: {}", e));
                         }
                     };
                 Ok(response)
@@ -358,20 +334,20 @@ impl Socket {
             match self.socket.accept() {
                 Ok((mut stream, _)) => {
                     if let Err(e) = stream.set_read_timeout(Some(timeout)) {
-                        error!("Couldn't set read timeout on stream:\n{}", e);
-                    };
+                        error!("Couldn't set read timeout on stream:\n{e}");
+                    }
                     if let Err(e) = stream.set_write_timeout(Some(timeout)) {
-                        error!("Couldn't set write timeout on stream:\n{}", e);
-                    };
+                        error!("Couldn't set write timeout on stream:\n{e}");
+                    }
                     if let Err(e) = Self::handle_client(
                         &mut stream,
                         Arc::clone(&state),
                         Arc::clone(&should_stop),
                     ) {
-                        error!("{}", e);
+                        error!("{e}");
                     }
                 }
-                Err(err) => error!("Couldn't connect to incoming stream:\n{}", err),
+                Err(err) => error!("Couldn't connect to incoming stream:\n{err}"),
             }
         }
     }
@@ -422,11 +398,11 @@ impl Client {
 
         if let Err(e) = connection.set_read_timeout(Some(timeout)) {
             return Err(anyhow!("Couldn't set read timeout on stream:\n{}", e));
-        };
+        }
 
         if let Err(e) = connection.set_write_timeout(Some(timeout)) {
             return Err(anyhow!("Couldn't set write timeout on stream:\n{}", e));
-        };
+        }
 
         let buffers = Self::create_buffers(&connection)?;
         Ok(Self {
@@ -446,11 +422,11 @@ impl Client {
 
     /// Send a message to the client's destination
     pub fn send(&mut self, message: String) -> Result<()> {
-        if let Err(e) = self.writer.write_all(format!("{}\n", message).as_bytes()) {
+        if let Err(e) = self.writer.write_all(format!("{message}\n").as_bytes()) {
             return Err(anyhow!("Couldn't write message to the stream:\n{}", e));
         }
         match self.writer.flush() {
-            Ok(_) => Ok(()),
+            Ok(()) => Ok(()),
             Err(e) => Err(anyhow!("Couldn't flush buffer:\n{}", e)),
         }
     }
@@ -473,7 +449,7 @@ impl Client {
 
         if let Err(e) = self.writer.flush() {
             return Err(anyhow!("Couldn't flush buffer:\n{}", e));
-        };
+        }
 
         self.receive()
     }
@@ -499,7 +475,7 @@ impl Client {
             MsgSubcommandArgs::Stop(_) => self.send_ipc_request(IpcAction::Stop()),
             MsgSubcommandArgs::PrintState(_) => self.send_ipc_request(IpcAction::PrintState()),
         })?;
-        println!("{}", response);
+        println!("{response}");
         Ok(())
     }
 }

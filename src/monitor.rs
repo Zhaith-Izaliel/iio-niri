@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use anyhow::{anyhow, Result};
 use niri_ipc::{socket::Socket, Output, Request, Response};
+use std::collections::HashMap;
 
 /// Returns the monitors Niri sees.
 pub fn get_monitors(socket: &mut Socket) -> Result<HashMap<String, Output>> {
@@ -25,7 +24,7 @@ pub fn get_monitor(socket: &mut Socket, monitor_name: Option<String>) -> Result<
             if !outputs.keys().any(|key| *key == mon) {
                 return Err(anyhow!("The provided monitor ({}) is not connected.", mon));
             }
-            Ok(mon.to_owned())
+            Ok(mon.clone())
         }
         None => match outputs.keys().next() {
             Some(str) => Ok(str.to_owned()),

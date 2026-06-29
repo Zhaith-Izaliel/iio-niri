@@ -206,6 +206,8 @@ Then start IIO-Niri in `listen` mode with Niri:
 spawn-at-startup "iio-niri" "listen" "--monitor" "eDP-1"
 ```
 
+You can also remap the orientation you want your screen to have based on what the sensor detects by passing `--transform <normal> <left-up> <bottom-up> <right-up>`. Possible values include `normal` (0°), `90` `180` `270` and `keep` (keeps whatever was previously used). A common usecase is disabling portrait orientations: `--transform normal keep 180 keep`
+
 ### Communicating with a running instance of IIO-Niri
 
 IIO-Niri generates its own socket for Inter Process Communication (IPC). You can use the `msg` sub-command to send requests to the IPC.
