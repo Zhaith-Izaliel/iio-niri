@@ -1,3 +1,4 @@
+#![warn(clippy::pedantic)]
 use crate::app::print_completions;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
