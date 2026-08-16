@@ -10,14 +10,14 @@ use std::time::Duration;
 const INTERFACE: &str = "net.hadess.SensorProxy";
 const PATH: &str = "/net/hadess/SensorProxy";
 
-/// A structure to query the manage the Accelerometer through DBus.
+/// A structure to query the manage the Accelerometer through `DBus`.
 pub struct Accelerometer {
     dbus_connection: Connection,
     timeout: Duration,
 }
 
 impl Accelerometer {
-    /// Create the DBus connection to the Accelerometer
+    /// Create the `DBus` connection to the Accelerometer
     fn create_dbus_connection() -> Result<Connection> {
         debug!("Connecting to the system bus...");
         let Ok(conn) = Connection::new_system() else {
@@ -53,7 +53,7 @@ impl Accelerometer {
         matches!(self.proxy().get(INTERFACE, "HasAccelerometer"), Ok(it) if it)
     }
 
-    /// Creates the DBus proxy to query and manage the Accelerometer.
+    /// Creates the `DBus` proxy to query and manage the Accelerometer.
     pub fn proxy(&self) -> Proxy<'_, &Connection> {
         Proxy::new(INTERFACE, PATH, self.timeout, &self.dbus_connection)
     }
@@ -86,7 +86,7 @@ impl Accelerometer {
                 debug!("Accelerometer released.");
                 Ok(())
             }
-            Err(err) => Err(anyhow!(format!("Couldn't release accelerometer:\n{}", err))),
+            Err(err) => Err(anyhow!(format!("Couldn't release accelerometer:\n{err}"))),
         }
     }
 
@@ -102,11 +102,11 @@ impl Accelerometer {
                 debug!("Accelerometer claimed.");
                 Ok(())
             }
-            Err(err) => Err(anyhow!("Couldn't claim accelerometer:\n{}", err)),
+            Err(err) => Err(anyhow!("Couldn't claim accelerometer:\n{err}")),
         }
     }
 
-    /// Returns the DBus Connection inside this object
+    /// Returns the `DBus` Connection inside this object
     pub fn get_dbus_connection(&self) -> &Connection {
         &self.dbus_connection
     }

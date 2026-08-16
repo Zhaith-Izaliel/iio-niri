@@ -86,7 +86,6 @@ impl TransformMapping {
     /// Parse the given accelerometer to its own Transform
     pub fn parse_orientation(&self, orientation: &str) -> TransformAction {
         match orientation {
-            "normal" => self.normal,
             "left-up" => self.left_up,
             "bottom-up" => self.bottom_up,
             "right-up" => self.right_up,

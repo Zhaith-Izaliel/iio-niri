@@ -8,7 +8,7 @@ use log::{debug, info};
 use niri_ipc::{socket::Socket, LogicalOutput, Output, OutputAction, Request};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
+    Mutex,
 };
 
 /// Update the given monitor's orientation using the accelerometer orientation.
@@ -42,12 +42,10 @@ fn update_orientation(
                 Ok(())
             }
             Some(Output { logical: None, .. }) => Err(anyhow!(
-                "Couldn't get the logical output information from the provided monitor ({}).",
-                monitor
+                "Couldn't get the logical output information from the provided monitor ({monitor})."
             )),
             None => Err(anyhow!(
-                "Couldn't find the provided monitor ({}) in the list of outputs.",
-                monitor
+                "Couldn't find the provided monitor ({monitor}) in the list of outputs."
             )),
             _ => Ok(()),
         },
@@ -56,10 +54,10 @@ fn update_orientation(
 
 /// Defines the thread routine to listen to orientation changes.
 pub fn change_orientation_routine(
-    state: Arc<Mutex<State>>,
+    state: &Mutex<State>,
     timeout: u64,
     mut niri_socket: Socket,
-    should_stop: Arc<AtomicBool>,
+    should_stop: &AtomicBool,
 ) -> Result<()> {
     let accelerometer = Accelerometer::new(timeout)?;
 

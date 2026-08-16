@@ -21,7 +21,7 @@ fn main() -> Result<()> {
 
     let response = match args.command {
         app::Commands::Listen(listen_args) => {
-            listen::run(listen_args, args.socket, args.socket_timeout)
+            listen::run(&listen_args, args.socket, args.socket_timeout)
         }
         app::Commands::Msg(msg_args) => {
             match ipc::Client::bind(args.socket, Duration::from_millis(args.socket_timeout)) {

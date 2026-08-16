@@ -14,7 +14,7 @@ use std::{
 
 /// Run the listen subcommand
 pub fn run(
-    args: app::ListenArgs,
+    args: &app::ListenArgs,
     iio_niri_socket_path: Option<String>,
     socket_timeout: u64,
 ) -> Result<()> {
@@ -29,7 +29,7 @@ pub fn run(
     debug!("Niri socket bound!");
 
     debug!("Creating state...");
-    let state = state::State::from_args(&mut niri_socket, &args)?;
+    let state = state::State::from_args(&mut niri_socket, args)?;
     debug!("State created successfully!");
 
     debug!("Creating IIO-Niri socket...");
@@ -94,7 +94,7 @@ fn run_threads(
     if should_stop.load(Ordering::Relaxed) && std::fs::exists(&socket_path).unwrap_or_default() {
         match ipc::Client::bind(Some(socket_path), socket_timeout) {
             Ok(mut client) => {
-                client.send_ipc_request(ipc::IpcAction::Stop())?; // Used to wake the IPC thread for clean up.
+                client.send_ipc_request(&ipc::IpcAction::Stop())?; // Used to wake the IPC thread for clean up.
             }
             Err(e) => return Err(e),
         }
@@ -115,7 +115,7 @@ fn handle_ipc(
     socket_timeout: Duration,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
-        iio_niri_socket.process(Arc::clone(&state), Arc::clone(&should_stop), socket_timeout);
+        iio_niri_socket.process(&state, &should_stop, socket_timeout);
         signals_handle.close();
         if let Err(e) = iio_niri_socket.destroy_socket() {
             error!("{e}");
@@ -153,12 +153,9 @@ fn handle_orientation(
     signals_handle: Handle,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
-        if let Err(e) = orientation::change_orientation_routine(
-            state,
-            timeout,
-            niri_socket,
-            Arc::clone(&should_stop),
-        ) {
+        if let Err(e) =
+            orientation::change_orientation_routine(&state, timeout, niri_socket, &should_stop)
+        {
             error!("{e}");
             should_stop.store(true, Ordering::Relaxed);
         }

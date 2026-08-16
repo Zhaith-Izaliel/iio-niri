@@ -22,7 +22,7 @@ pub fn get_monitor(socket: &mut Socket, monitor_name: Option<String>) -> Result<
     match monitor_name {
         Some(mon) => {
             if !outputs.keys().any(|key| *key == mon) {
-                return Err(anyhow!("The provided monitor ({}) is not connected.", mon));
+                return Err(anyhow!("The provided monitor ({mon}) is not connected."));
             }
             Ok(mon.clone())
         }
