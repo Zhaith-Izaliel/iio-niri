@@ -28,7 +28,7 @@ fn update_orientation(
                         ..
                     }),
                 ..
-            }) if old_orientation != orientation => {
+            }) => {
                 debug!("Updating screen orientation...");
                 if let Err(str) = socket.send(Request::Output {
                     output: monitor.to_owned(),
