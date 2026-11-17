@@ -47,7 +47,6 @@ fn update_orientation(
             None => Err(anyhow!(
                 "Couldn't find the provided monitor ({monitor}) in the list of outputs."
             )),
-            _ => Ok(()),
         },
     }
 }
