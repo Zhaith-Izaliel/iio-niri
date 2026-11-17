@@ -319,6 +319,9 @@ Don't forget to give the project a star! Thanks again!
 3. Push to your `master` branch (`git push origin master`)
 4. Open a Pull Request on `master`
 
+> [!IMPORTANT]
+> Before submitting your PR, be sure to test the code and fix all warnings raised during compilation. Don't ignore warnings or bypass Clippy.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Top contributors:
