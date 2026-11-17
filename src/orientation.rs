@@ -28,7 +28,7 @@ fn update_orientation(
                         ..
                     }),
                 ..
-            }) if old_orientation != orientation => {
+            }) => {
                 debug!("Updating screen orientation...");
                 if let Err(str) = socket.send(Request::Output {
                     output: monitor.to_owned(),
@@ -47,7 +47,6 @@ fn update_orientation(
             None => Err(anyhow!(
                 "Couldn't find the provided monitor ({monitor}) in the list of outputs."
             )),
-            _ => Ok(()),
         },
     }
 }
